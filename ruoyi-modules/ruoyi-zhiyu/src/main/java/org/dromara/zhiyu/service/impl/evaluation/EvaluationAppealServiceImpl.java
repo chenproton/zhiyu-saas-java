@@ -11,6 +11,7 @@ import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.ProcessAppealReque
 import org.dromara.zhiyu.domain.evaluation.EvaluationAppeal;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationAppealMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.evaluation.IEvaluationAppealService;
 import org.springframework.stereotype.Service;
 
@@ -26,14 +27,15 @@ import java.util.UUID;
 @Service
 public class EvaluationAppealServiceImpl implements IEvaluationAppealService {
 
+    private final SystemGuard systemGuard;
     private final EvaluationAppealMapper appealMapper;
     private final ZhiyuUserMapper userMapper;
 
     @Override
     public ListResponse<AppealDto> list(String type, String status, long limit, long offset) {
-        String tenantId = requireTenant();
-        requireUser();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         long total = appealMapper.countAppeals(tenantId, type, status);
         List<EvaluationAppeal> rows = appealMapper.selectAppeals(tenantId, type, status, safeLimit, safeOffset);
@@ -43,16 +45,16 @@ public class EvaluationAppealServiceImpl implements IEvaluationAppealService {
 
     @Override
     public AppealDto get(String id) {
-        requireTenant();
-        requireUser();
+        systemGuard.requireTenant();
+        systemGuard.requireUser();
         EvaluationAppeal appeal = verifyOwnedAppeal(id);
         return toDto(appeal);
     }
 
     @Override
     public AppealDto create(CreateAppealRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getUserId()) || isBlank(req.getType()) || isBlank(req.getReason())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -67,8 +69,8 @@ public class EvaluationAppealServiceImpl implements IEvaluationAppealService {
 
     @Override
     public AppealDto process(String id, ProcessAppealRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (isBlank(req.getStatus())) {
             throw new ApiException(400, "bad_request", "缺少状态");
         }
@@ -124,26 +126,4 @@ public class EvaluationAppealServiceImpl implements IEvaluationAppealService {
         return s == null || s.isBlank();
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

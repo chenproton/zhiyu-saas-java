@@ -20,6 +20,7 @@ import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationCertificationMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationJobAbilityMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationPortraitMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.evaluation.IEvaluationJobAbilityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -75,6 +76,7 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
     );
 
     /** 汇聚去重（同岗位并发只跑一次，对齐 Go aggInFlight） */
+    private final SystemGuard systemGuard;
     private final Set<String> aggInFlight = ConcurrentHashMap.newKeySet();
 
     private final EvaluationJobAbilityMapper jobMapper;
@@ -88,11 +90,11 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
     @Override
     public ListResponse<JobAbilityResultItemDto> listResults(String careerPositionId, String userId, String search,
                                                              String grade, int page, int limit) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String effectiveUserId = userId;
         // 学生仅可查看本人的能力汇聚结果
         if (isStudent()) {
-            effectiveUserId = requireUser();
+            effectiveUserId = systemGuard.requireUser();
         }
         int safePage = Math.max(page <= 0 ? 1 : page, 1);
         int safeLimit = limit <= 0 ? 50 : Math.min(limit, 200);
@@ -110,14 +112,14 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
 
     @Override
     public JobAbilityResultItemDto getResult(String id) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         Map<String, Object> row = jobMapper.selectResultById(id, tenantId);
         if (row == null) {
             throw new ApiException(404, "not_found", "岗位能力结果不存在");
         }
         // 学生仅可查看本人的能力汇聚结果
-        if (isStudent() && !requireUser().equals(str(row.get("user_id")))) {
+        if (isStudent() && !systemGuard.requireUser().equals(str(row.get("user_id")))) {
             throw new ApiException(404, "not_found", "岗位能力结果不存在");
         }
         return toResultItem(row);
@@ -125,12 +127,12 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
 
     @Override
     public ListResponse<CourseScoreItemDto> courseScores(String userId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         String effectiveUserId = userId;
         // 学生仅可查看本人的课程成绩
         if (isStudent()) {
-            effectiveUserId = requireUser();
+            effectiveUserId = systemGuard.requireUser();
         }
         if (effectiveUserId == null || effectiveUserId.isBlank()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
@@ -152,8 +154,8 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
 
     @Override
     public List<JobAbilitySummaryItemDto> summary() {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         List<JobAbilitySummaryItemDto> items = new ArrayList<>();
         for (Map<String, Object> row : jobMapper.summary(tenantId)) {
             JobAbilitySummaryItemDto dto = new JobAbilitySummaryItemDto();
@@ -245,8 +247,8 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
 
     @Override
     public Map<String, String> aggregate(JobAbilityAggregateRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -287,8 +289,8 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
 
     @Override
     public JobAbilityAggregateLogDto aggregateStatus(String careerPositionId, String logId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (careerPositionId == null || careerPositionId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填参数");
         }
@@ -880,22 +882,6 @@ public class EvaluationJobAbilityServiceImpl implements IEvaluationJobAbilitySer
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
     }
 
     private BigDecimal bigDec(double d) {

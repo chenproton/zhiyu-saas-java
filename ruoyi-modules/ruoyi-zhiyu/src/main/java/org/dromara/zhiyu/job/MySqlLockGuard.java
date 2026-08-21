@@ -11,8 +11,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * MySQL 会话级用户锁（GET_LOCK/RELEASE_LOCK，专用连接持有，对齐 Go scheduler.aggregateAll；
- * 原 PG advisory 锁已切换，类名保留）。
+ * MySQL 会话级用户锁（GET_LOCK/RELEASE_LOCK，专用连接持有，对齐 Go scheduler.aggregateAll
+ * 的 advisory lock 语义）。
  *
  * <p>锁由一条从连接池取出的专用 {@link Connection} 持有（连接级，与具体执行汇聚的
  * MyBatis 连接无关），{@link LockHandle#close()} 显式 unlock 并归还连接；
@@ -22,11 +22,11 @@ import java.sql.Statement;
  */
 @Slf4j
 @Component
-public class PgAdvisoryLockGuard {
+public class MySqlLockGuard {
 
     private final DataSource dataSource;
 
-    public PgAdvisoryLockGuard(DataSource dataSource) {
+    public MySqlLockGuard(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
@@ -55,7 +55,7 @@ public class PgAdvisoryLockGuard {
             try {
                 conn.close();
             } catch (SQLException closeErr) {
-                log.warn("advisory lock 连接归还失败 key={}", key, closeErr);
+                log.warn("MySQL 用户锁连接归还失败 key={}", key, closeErr);
             }
             throw e;
         }
@@ -77,12 +77,12 @@ public class PgAdvisoryLockGuard {
             try (Statement st = conn.createStatement()) {
                 st.execute("SELECT RELEASE_LOCK('" + key + "')");
             } catch (SQLException e) {
-                log.warn("advisory lock 释放失败（连接关闭后 MySQL 会自动释放）key={}", key, e);
+                log.warn("MySQL 用户锁释放失败（连接关闭后 MySQL 会自动释放）key={}", key, e);
             }
             try {
                 conn.close();
             } catch (SQLException e) {
-                log.warn("advisory lock 连接归还失败 key={}", key, e);
+                log.warn("MySQL 用户锁连接归还失败 key={}", key, e);
             }
         }
     }

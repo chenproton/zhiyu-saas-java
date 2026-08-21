@@ -18,6 +18,7 @@ import org.dromara.zhiyu.mapper.library.LibraryResourceMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioTaskMapper;
 import org.dromara.zhiyu.mapper.scene.SceneTaskResourceBindingMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneTaskResourceService;
 import org.springframework.stereotype.Service;
 
@@ -48,6 +49,7 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final LibraryResourceMapper resourceMapper;
     private final SceneTaskResourceBindingMapper bindingMapper;
     private final SceneScenarioTaskMapper taskMapper;
@@ -55,8 +57,8 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
 
     @Override
     public ListResponse<TaskResourceDto> list(String taskId, String search, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         // 按绑定过滤（对齐 Go JOIN task_resource_bindings）
@@ -90,8 +92,8 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
 
     @Override
     public TaskResourceDto create(CreateTaskResourceRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()
             || req.getType() == null || req.getType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -124,8 +126,8 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
 
     @Override
     public String bind(BindResourceRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getTaskId() == null || req.getTaskId().isEmpty()
             || req.getResourceId() == null || req.getResourceId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -141,8 +143,8 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
 
     @Override
     public String unbind(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         // 绑定不存在时静默成功（对齐 Go Unbind 幂等语义）
         String taskId = bindingMapper.selectTaskId(id);
         if (taskId == null) {
@@ -212,22 +214,6 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
         }
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "未授权");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
     private void verifyTenantOwnership(String entityTenantId) {
         String tenantId = TenantContext.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
@@ -238,10 +224,4 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
         }
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

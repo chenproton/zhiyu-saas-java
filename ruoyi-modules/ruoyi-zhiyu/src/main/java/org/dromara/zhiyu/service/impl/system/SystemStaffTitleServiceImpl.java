@@ -31,7 +31,7 @@ public class SystemStaffTitleServiceImpl implements ISystemStaffTitleService {
     @Override
     public ListResponse<SystemStaffTitle> list(String search, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemStaffTitle> wrapper = QueryBuilder.lambda(SystemStaffTitle.class)
             .eq(SystemStaffTitle::getTenantId, tenantId);
         if (search != null && !search.isBlank()) {
@@ -148,10 +148,4 @@ public class SystemStaffTitleServiceImpl implements ISystemStaffTitleService {
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

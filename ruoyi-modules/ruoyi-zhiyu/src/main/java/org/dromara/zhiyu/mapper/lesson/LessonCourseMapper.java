@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * 课程 Mapper（courses 表，lesson 域课程工作流 + portal 收藏列表共用）。
  *
- * <p>读取走 MyBatis-Plus 内置方法（数组列经 PgArrayTypeHandler 映射为 JSON 数组）；
+ * <p>读取走 MyBatis-Plus 内置方法（数组列经 JsonStringArrayTypeHandler 映射为 JSON 数组）；
  * 写入走自定义 SQL——JSON 数组列经 TypeHandler 序列化后写入 MySQL JSON 列。</p>
  *
  * @author zhiyu
@@ -40,11 +40,11 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
         + " #{industryId}, #{version}, #{onlineHours}, #{offlineHours}, #{onlineWeight}, #{offlineWeight},"
         + " #{semester}, #{className}, 'draft', #{coverColor}, #{coverImage}, #{courseTag}, #{difficulty}, #{description},"
         + " #{creatorId},"
-        + " #{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{batchId},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " CAST(#{evalData} AS JSON), 0, 0, 0)")
     int insertCourse(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                      @Param("name") String name, @Param("type") String type, @Param("category") String category,
@@ -70,13 +70,13 @@ public interface LessonCourseMapper extends BaseMapperPlus<LessonCourse, LessonC
         + " offline_weight = #{offlineWeight}, semester = #{semester}, class_name = #{className},"
         + " cover_color = #{coverColor}, cover_image = #{coverImage}, course_tag = #{courseTag},"
         + " difficulty = #{difficulty}, description = #{description},"
-        + " co_creator_ids = #{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " co_creator_ids = #{coCreatorIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " batch_id = #{batchId},"
-        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " ability_point_ids = #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " ability_point_ids = #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " eval_data = CAST(#{evalData} AS JSON),"
-        + " resource_count = COALESCE(JSON_LENGTH(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}), 0),"
+        + " resource_count = COALESCE(JSON_LENGTH(#{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}), 0),"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateCourse(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                      @Param("type") String type, @Param("category") String category, @Param("majorId") String majorId,

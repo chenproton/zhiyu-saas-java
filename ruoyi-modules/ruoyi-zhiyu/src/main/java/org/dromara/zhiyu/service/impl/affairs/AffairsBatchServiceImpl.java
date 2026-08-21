@@ -12,6 +12,7 @@ import org.dromara.zhiyu.domain.dto.affairs.AffairsDtos.AffairsBatchPayload;
 import org.dromara.zhiyu.domain.portal.PortalMajor;
 import org.dromara.zhiyu.mapper.affairs.AffairsBatchMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.affairs.IAffairsBatchService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,12 +32,13 @@ import java.util.Set;
 @Service
 public class AffairsBatchServiceImpl implements IAffairsBatchService {
 
+    private final SystemGuard systemGuard;
     private final AffairsBatchMapper batchMapper;
     private final PortalMajorMapper majorMapper;
 
     @Override
     public ListResponse<AffairsBatchDto> list(String search, String orgNodeId, String status, long limit, long offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         long safeLimit = clampLimit(limit);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<AffairsBatch> wrapper = QueryBuilder.lambda(AffairsBatch.class)
@@ -58,7 +60,7 @@ public class AffairsBatchServiceImpl implements IAffairsBatchService {
 
     @Override
     public AffairsBatchDto create(AffairsBatchPayload p) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (p.getName() == null || p.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -80,7 +82,7 @@ public class AffairsBatchServiceImpl implements IAffairsBatchService {
 
     @Override
     public AffairsBatchDto update(String id, AffairsBatchPayload p) {
-        requireTenant();
+        systemGuard.requireTenant();
         AffairsBatch batch = fetchOwnedAction(id);
         if (p.getName() == null || p.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -101,7 +103,7 @@ public class AffairsBatchServiceImpl implements IAffairsBatchService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchOwnedAction(id);
         batchMapper.deleteById(id);
         return id;
@@ -109,7 +111,7 @@ public class AffairsBatchServiceImpl implements IAffairsBatchService {
 
     @Override
     public AffairsBatchDto updateStatus(String id, String status) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchOwnedAction(id);
         if (!"open".equals(status) && !"closed".equals(status)) {
             throw new ApiException(400, "bad_request", "无效状态");
@@ -192,11 +194,4 @@ public class AffairsBatchServiceImpl implements IAffairsBatchService {
         return s == null || s.isEmpty() ? null : s;
     }
 
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

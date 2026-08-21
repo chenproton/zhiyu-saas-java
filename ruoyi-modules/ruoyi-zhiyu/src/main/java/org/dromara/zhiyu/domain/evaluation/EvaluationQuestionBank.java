@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.util.List;
 
@@ -46,11 +46,11 @@ public class EvaluationQuestionBank extends BaseZhiyuEntity {
     private String creatorId;
 
     /** 协作者 ID 数组 */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> collaboratorIds;
 
     /** 协作部门 ID 数组 */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> collaboratorDeptIds;
 
     /** 批次 ID */

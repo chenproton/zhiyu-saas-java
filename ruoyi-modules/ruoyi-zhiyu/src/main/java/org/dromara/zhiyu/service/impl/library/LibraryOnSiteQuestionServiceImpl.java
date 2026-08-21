@@ -8,6 +8,7 @@ import org.dromara.zhiyu.domain.dto.library.LibraryDtos.OnSiteQuestionItemDto;
 import org.dromara.zhiyu.domain.dto.library.LibraryDtos.OnSiteQuestionRequest;
 import org.dromara.zhiyu.domain.library.LibraryOnSiteQuestion;
 import org.dromara.zhiyu.mapper.library.LibraryOnSiteQuestionMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.library.ILibraryOnSiteQuestionService;
 import org.springframework.stereotype.Service;
 
@@ -32,11 +33,12 @@ public class LibraryOnSiteQuestionServiceImpl implements ILibraryOnSiteQuestionS
 
     private static final String ROLE_STUDENT = "student";
 
+    private final SystemGuard systemGuard;
     private final LibraryOnSiteQuestionMapper questionMapper;
 
     @Override
     public ListResponse<OnSiteQuestionItemDto> list(String search, int limit, int offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         long safeLimit = clampLimit(limit, DEFAULT_LIMIT);
         long safeOffset = Math.max(offset, 0);
         String pattern = toLikePattern(search);
@@ -53,7 +55,7 @@ public class LibraryOnSiteQuestionServiceImpl implements ILibraryOnSiteQuestionS
 
     @Override
     public OnSiteQuestionItemDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         LibraryOnSiteQuestion item = fetchOwned(id);
         OnSiteQuestionItemDto dto = toDto(item);
         if (isStudentUser()) {
@@ -64,12 +66,12 @@ public class LibraryOnSiteQuestionServiceImpl implements ILibraryOnSiteQuestionS
 
     @Override
     public OnSiteQuestionItemDto create(OnSiteQuestionRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         if (req.getQuestionText() == null || req.getQuestionText().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
 
         String id = UUID.randomUUID().toString();
         questionMapper.insertQuestion(id, tenantId, req.getQuestionText(), req.getAnswer(),
@@ -88,7 +90,7 @@ public class LibraryOnSiteQuestionServiceImpl implements ILibraryOnSiteQuestionS
 
     @Override
     public OnSiteQuestionItemDto update(String id, OnSiteQuestionRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         LibraryOnSiteQuestion existing = fetchOwned(id);
         // 部分更新：未传字段回填现有值，避免清空（对齐 Go crud UpdateFn）
         String questionText = req.getQuestionText() != null ? req.getQuestionText() : existing.getQuestionText();
@@ -111,7 +113,7 @@ public class LibraryOnSiteQuestionServiceImpl implements ILibraryOnSiteQuestionS
 
     @Override
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchOwned(id);
         questionMapper.deleteQuestion(id);
         return id;
@@ -183,19 +185,4 @@ public class LibraryOnSiteQuestionServiceImpl implements ILibraryOnSiteQuestionS
         return Math.min(limit, 200);
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

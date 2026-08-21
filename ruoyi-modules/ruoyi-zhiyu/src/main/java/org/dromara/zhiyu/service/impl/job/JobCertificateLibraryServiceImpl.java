@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.job;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -13,6 +14,7 @@ import org.dromara.zhiyu.domain.dto.job.JobDtos.CitationStatsDto;
 import org.dromara.zhiyu.domain.dto.job.JobDtos.UncitedItemDto;
 import org.dromara.zhiyu.domain.job.JobCertificateLibraryItem;
 import org.dromara.zhiyu.mapper.job.JobCertificateLibraryMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobCertificateLibraryService;
 import org.springframework.stereotype.Service;
 
@@ -40,13 +42,14 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
     private static final List<String> BUCKET_LABELS =
         List.of("0次", "1-5次", "6-10次", "11-100次", "100次以上");
 
+    private final SystemGuard systemGuard;
     private final JobCertificateLibraryMapper libraryMapper;
 
     @Override
     public ListResponse<CertificateLibraryItemDto> list(String search, String creatorId, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobCertificateLibraryItem> wrapper = QueryBuilder.lambda(JobCertificateLibraryItem.class)
             .eq(JobCertificateLibraryItem::getTenantId, tenantId)
@@ -68,8 +71,8 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
 
     @Override
     public CertificateLibraryItemDto get(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobCertificateLibraryItem item = libraryMapper.selectById(id);
         if (item == null) {
             throw new ApiException(404, "not_found", "证书不存在");
@@ -80,17 +83,17 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
 
     @Override
     public CertificateLibraryItemDto create(CertificateLibraryRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         JobCertificateLibraryItem item = new JobCertificateLibraryItem();
         item.setTenantId(tenantId);
         item.setName(req.getName());
-        item.setUrl(blankToNull(req.getUrl()));
-        item.setDescription(blankToNull(req.getDescription()));
-        item.setImageUrl(blankToNull(req.getImageUrl()));
+        item.setUrl(ZhiyuStringUtils.blankToNull(req.getUrl()));
+        item.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
+        item.setImageUrl(ZhiyuStringUtils.blankToNull(req.getImageUrl()));
         item.setCreatorId(userId);
         libraryMapper.insert(item);
         return toDto(item);
@@ -98,8 +101,8 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
 
     @Override
     public CertificateLibraryItemDto update(String id, CertificateLibraryRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobCertificateLibraryItem existing = libraryMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "证书不存在");
@@ -113,17 +116,17 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
         JobCertificateLibraryItem update = new JobCertificateLibraryItem();
         update.setId(id);
         update.setName(name);
-        update.setUrl(blankToNull(url));
-        update.setDescription(blankToNull(description));
-        update.setImageUrl(blankToNull(imageUrl));
+        update.setUrl(ZhiyuStringUtils.blankToNull(url));
+        update.setDescription(ZhiyuStringUtils.blankToNull(description));
+        update.setImageUrl(ZhiyuStringUtils.blankToNull(imageUrl));
         libraryMapper.updateById(update);
         return toDto(libraryMapper.selectById(id));
     }
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobCertificateLibraryItem existing = libraryMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "证书不存在");
@@ -135,7 +138,7 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
 
     @Override
     public CitationStatsDto citationStats() {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         Map<String, Integer> counts = new LinkedHashMap<>();
         int total = 0;
         for (JobCertificateLibraryMapper.CitationCountRow row : libraryMapper.selectCitationStats(tenantId)) {
@@ -160,13 +163,13 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
 
     @Override
     public ListResponse<UncitedItemDto> uncited(String startDate, String endDate, long limit, long offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         OffsetDateTime from = parseDate(startDate);
         OffsetDateTime to = parseDate(endDate);
         if (to != null) {
             to = to.plusDays(1);
         }
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         long total = libraryMapper.countUncited(tenantId, from, to);
         List<JobCertificateLibraryItem> rows = libraryMapper.selectUncited(tenantId, from, to,
@@ -209,22 +212,6 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
         }
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
     private void verifyTenantOwnership(String entityTenantId) {
         String tenantId = TenantContext.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
@@ -235,14 +222,4 @@ public class JobCertificateLibraryServiceImpl implements IJobCertificateLibraryS
         }
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
-    }
 }

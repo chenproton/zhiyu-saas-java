@@ -41,7 +41,7 @@ public class SystemUserServiceImpl implements ISystemUserService {
     public ListResponse<ZhiyuUser> list(String institutionId, String roleId, String roleCode, String orgNodeId,
                                         String titleId, String status, String search, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         List<ZhiyuUser> items = userMapper.selectUserPage(tenantId, institutionId, roleId, roleCode, orgNodeId,
             titleId, status, search, safeLimit, safeOffset);
@@ -444,10 +444,4 @@ public class SystemUserServiceImpl implements ISystemUserService {
         return o == null ? null : String.valueOf(o);
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

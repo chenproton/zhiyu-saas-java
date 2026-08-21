@@ -118,4 +118,17 @@ public class SystemGuard {
             throw new ApiException(403, "forbidden", "无权操作：不能为其他租户创建资源");
         }
     }
+
+    /** 分页 limit 收敛（<=0 取默认值，上限 200；收敛各 service 私有副本）。 */
+    public long clampLimit(long limit, long defaultLimit) {
+        return clampLimit(limit, defaultLimit, 200);
+    }
+
+    /** 分页 limit 收敛（<=0 取默认值，自定义上限；题目列表等大列表用）。 */
+    public long clampLimit(long limit, long defaultLimit, long max) {
+        if (limit <= 0) {
+            return defaultLimit;
+        }
+        return Math.min(limit, max);
+    }
 }

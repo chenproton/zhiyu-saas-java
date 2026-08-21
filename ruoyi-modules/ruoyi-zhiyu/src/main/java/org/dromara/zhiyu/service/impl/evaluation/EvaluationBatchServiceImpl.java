@@ -10,6 +10,7 @@ import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.BatchRequest;
 import org.dromara.zhiyu.domain.dto.evaluation.EvaluationDtos.EvaluationBatchDto;
 import org.dromara.zhiyu.domain.evaluation.EvaluationBatch;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationBatchMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.evaluation.IEvaluationBatchService;
 import org.springframework.stereotype.Service;
 
@@ -31,12 +32,13 @@ import java.util.UUID;
 @Service
 public class EvaluationBatchServiceImpl implements IEvaluationBatchService {
 
+    private final SystemGuard systemGuard;
     private final EvaluationBatchMapper batchMapper;
 
     @Override
     public ListResponse<EvaluationBatchDto> list(String orgNodeId, String status, String search, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<EvaluationBatch> wrapper = QueryBuilder.lambda(EvaluationBatch.class)
             .eq(EvaluationBatch::getTenantId, tenantId);
@@ -58,7 +60,7 @@ public class EvaluationBatchServiceImpl implements IEvaluationBatchService {
 
     @Override
     public EvaluationBatchDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationBatch batch = fetchBatch(id);
         Map<String, String> majorNames = majorNameMap(batch.getMajorId() == null ? List.of() : List.of(batch.getMajorId()));
         EvaluationBatchDto dto = toDto(batch);
@@ -68,8 +70,8 @@ public class EvaluationBatchServiceImpl implements IEvaluationBatchService {
 
     @Override
     public EvaluationBatchDto create(BatchRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -90,9 +92,9 @@ public class EvaluationBatchServiceImpl implements IEvaluationBatchService {
 
     @Override
     public EvaluationBatchDto update(String id, BatchRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationBatch existing = fetchBatch(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -114,9 +116,9 @@ public class EvaluationBatchServiceImpl implements IEvaluationBatchService {
 
     @Override
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchBatch(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         batchMapper.delete(QueryBuilder.lambda(EvaluationBatch.class)
             .eq(EvaluationBatch::getId, id).eq(EvaluationBatch::getTenantId, tenantId).build());
         return id;
@@ -124,9 +126,9 @@ public class EvaluationBatchServiceImpl implements IEvaluationBatchService {
 
     @Override
     public EvaluationBatchDto updateStatus(String id, String status) {
-        requireUser();
+        systemGuard.requireUser();
         fetchBatch(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!"open".equals(status) && !"closed".equals(status)) {
             throw new ApiException(400, "bad_request", "无效状态");
         }
@@ -185,36 +187,13 @@ public class EvaluationBatchServiceImpl implements IEvaluationBatchService {
     }
 
     private EvaluationBatch fetchBatch(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationBatch batch = batchMapper.selectOne(QueryBuilder.lambda(EvaluationBatch.class)
             .eq(EvaluationBatch::getId, id).eq(EvaluationBatch::getTenantId, tenantId).build());
         if (batch == null) {
             throw new ApiException(404, "not_found", "评价批次不存在");
         }
         return batch;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String toLikePattern(String s) {

@@ -10,6 +10,7 @@ import org.dromara.zhiyu.domain.dto.AuthDtos.ZhiyuUserView;
 import org.dromara.zhiyu.domain.dto.portal.UserSelfDtos.ChangeMyPasswordRequest;
 import org.dromara.zhiyu.domain.dto.portal.UserSelfDtos.UpdateMeRequest;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.portal.IUserSelfService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,12 +26,13 @@ import java.time.OffsetDateTime;
 @Service
 public class UserSelfServiceImpl implements IUserSelfService {
 
+    private final SystemGuard systemGuard;
     private final ZhiyuUserMapper userMapper;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public ZhiyuUserView updateMe(UpdateMeRequest req) {
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isBlank()) {
             throw new ApiException(400, "bad_request", "姓名不能为空");
         }
@@ -47,7 +49,7 @@ public class UserSelfServiceImpl implements IUserSelfService {
 
     @Override
     public String changeMyPassword(ChangeMyPasswordRequest req) {
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         if (req.getNewPassword() == null || req.getNewPassword().isBlank()) {
             throw new ApiException(400, "bad_request", "密码不能为空");
         }
@@ -87,14 +89,6 @@ public class UserSelfServiceImpl implements IUserSelfService {
             }
         }
         return hasLetter && hasDigit;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "未登录或登录已过期");
-        }
-        return userId;
     }
 
     private ZhiyuUserView toUserView(ZhiyuUser u) {

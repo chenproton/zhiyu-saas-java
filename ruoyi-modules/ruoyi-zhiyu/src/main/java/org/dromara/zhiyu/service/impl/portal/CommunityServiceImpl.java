@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.portal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -18,6 +19,7 @@ import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.portal.PortalCommunityReplyMapper;
 import org.dromara.zhiyu.mapper.portal.PortalCommunityTopicMapper;
 import org.dromara.zhiyu.mapper.portal.PortalViewCounterMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.portal.ICommunityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +50,7 @@ public class CommunityServiceImpl implements ICommunityService {
 
     private static final String TOPIC_VIEW_TYPE = "community_topic";
 
+    private final SystemGuard systemGuard;
     private final PortalCommunityTopicMapper topicMapper;
     private final PortalCommunityReplyMapper replyMapper;
     private final PortalViewCounterMapper viewCounterMapper;
@@ -55,8 +58,8 @@ public class CommunityServiceImpl implements ICommunityService {
 
     @Override
     public ListResponse<CommunityTopicDto> listTopics(String sort, long limit, long offset) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
 
         String sortKey = sort;
         if (sortKey == null || sortKey.isBlank()) {
@@ -97,8 +100,8 @@ public class CommunityServiceImpl implements ICommunityService {
 
     @Override
     public String createTopic(CreateTopicRequest req) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         String title = req.getTitle() == null ? "" : req.getTitle().trim();
         String content = req.getContent() == null ? "" : req.getContent().trim();
         String tag = req.getTag() == null ? "" : req.getTag().trim();
@@ -127,8 +130,8 @@ public class CommunityServiceImpl implements ICommunityService {
 
     @Override
     public CommunityTopicDto getTopic(String id) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (id == null || id.isBlank()) {
             throw new ApiException(400, "bad_request", "缺少话题 ID");
         }
@@ -152,8 +155,8 @@ public class CommunityServiceImpl implements ICommunityService {
 
     @Override
     public ListResponse<CommunityReplyDto> listReplies(String topicId) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (topicId == null || topicId.isBlank()) {
             throw new ApiException(400, "bad_request", "缺少话题 ID");
         }
@@ -177,8 +180,8 @@ public class CommunityServiceImpl implements ICommunityService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String createReply(String topicId, CreateReplyRequest req) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (topicId == null || topicId.isBlank()) {
             throw new ApiException(400, "bad_request", "缺少话题 ID");
         }
@@ -248,10 +251,10 @@ public class CommunityServiceImpl implements ICommunityService {
             dto.setAuthorId(t.getAuthorId());
             ZhiyuUser author = authorMap.get(t.getAuthorId());
             dto.setAuthorName(author == null || author.getName() == null ? "" : author.getName());
-            dto.setAvatarUrl(blankToNull(author == null ? null : author.getAvatarUrl()));
+            dto.setAvatarUrl(ZhiyuStringUtils.blankToNull(author == null ? null : author.getAvatarUrl()));
             dto.setTitle(t.getTitle());
             dto.setContent(t.getContent());
-            dto.setTag(blankToNull(t.getTag()));
+            dto.setTag(ZhiyuStringUtils.blankToNull(t.getTag()));
             dto.setReplyCount(t.getReplyCount() == null ? 0 : t.getReplyCount());
             dto.setViewCount(viewMap.getOrDefault(t.getId(), 0L).intValue());
             dto.setLastReplyAt(lastReplyMap.get(t.getId()));
@@ -295,7 +298,7 @@ public class CommunityServiceImpl implements ICommunityService {
             dto.setAuthorId(r.getAuthorId());
             ZhiyuUser author = authorMap.get(r.getAuthorId());
             dto.setAuthorName(author == null || author.getName() == null ? "" : author.getName());
-            dto.setAvatarUrl(blankToNull(author == null ? null : author.getAvatarUrl()));
+            dto.setAvatarUrl(ZhiyuStringUtils.blankToNull(author == null ? null : author.getAvatarUrl()));
             if (r.getParentId() != null) {
                 dto.setParentId(r.getParentId());
                 PortalCommunityReply parentReply = parentReplyMap.get(r.getParentId());
@@ -365,23 +368,4 @@ public class CommunityServiceImpl implements ICommunityService {
         }
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
-    }
 }

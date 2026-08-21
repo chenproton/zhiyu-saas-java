@@ -4,7 +4,7 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.job.JobLearnRoad;
 
 import java.util.List;
@@ -22,7 +22,7 @@ public interface JobLearnRoadMapper extends BaseMapperPlus<JobLearnRoad, JobLear
      * 更新学习路径（限定租户；position_ids 数组列显式 CAST）。
      */
     @Update("UPDATE learn_roads SET name = #{name}, description = #{description},"
-        + " position_ids = #{positionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " position_ids = #{positionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " steps = CAST(#{steps} AS JSON), updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateLearnRoad(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,

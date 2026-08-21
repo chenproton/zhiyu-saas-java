@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.util.List;
 
@@ -25,7 +25,7 @@ public class AllianceResourceGrant extends BaseZhiyuEntity {
     private String enterpriseId;
     private String resourceType;
     /** uuid[] 授权资源集合 */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> resourceIds;
     private String createdBy;
 }

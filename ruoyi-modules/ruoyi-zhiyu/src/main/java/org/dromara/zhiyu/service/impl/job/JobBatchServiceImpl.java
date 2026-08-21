@@ -10,6 +10,7 @@ import org.dromara.zhiyu.domain.dto.job.JobDtos.BatchUpdateRequest;
 import org.dromara.zhiyu.domain.dto.job.JobDtos.JobBatchDto;
 import org.dromara.zhiyu.domain.job.JobBatch;
 import org.dromara.zhiyu.mapper.job.JobBatchMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobBatchService;
 import org.springframework.stereotype.Service;
 
@@ -29,12 +30,13 @@ import java.util.UUID;
 @Service
 public class JobBatchServiceImpl implements IJobBatchService {
 
+    private final SystemGuard systemGuard;
     private final JobBatchMapper batchMapper;
 
     @Override
     public ListResponse<JobBatchDto> list(String orgNodeId, String status, String search, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         String pattern = toLikePattern(search);
 
@@ -50,15 +52,15 @@ public class JobBatchServiceImpl implements IJobBatchService {
 
     @Override
     public JobBatchDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         JobBatch batch = fetchOwned(id);
         return toDto(batch);
     }
 
     @Override
     public JobBatchDto create(BatchCreateRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -86,7 +88,7 @@ public class JobBatchServiceImpl implements IJobBatchService {
 
     @Override
     public JobBatchDto update(String id, BatchUpdateRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         JobBatch existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
         if (req.getName() == null || req.getName().isEmpty()) {
@@ -108,7 +110,7 @@ public class JobBatchServiceImpl implements IJobBatchService {
 
     @Override
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         JobBatch existing = fetchOwned(id);
         batchMapper.deleteBatch(id, existing.getTenantId());
         return id;
@@ -116,7 +118,7 @@ public class JobBatchServiceImpl implements IJobBatchService {
 
     @Override
     public JobBatchDto updateStatus(String id, BatchStatusRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         JobBatch existing = fetchOwned(id);
         if (req.getStatus() == null || (!"open".equals(req.getStatus()) && !"closed".equals(req.getStatus()))) {
             throw new ApiException(400, "bad_request", "无效状态");
@@ -167,29 +169,6 @@ public class JobBatchServiceImpl implements IJobBatchService {
         dto.setCreatedAt(b.getCreatedAt());
         dto.setUpdatedAt(b.getUpdatedAt());
         return dto;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

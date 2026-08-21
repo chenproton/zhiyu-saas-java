@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,11 +45,11 @@ public class PortalExam extends BaseZhiyuEntity {
     private String coverImage;
 
     /** 协作人 ID 数组 */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> collaboratorIds;
 
     /** 协作部门 ID 数组 */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> collaboratorDeptIds;
 
     /** 批次 ID */

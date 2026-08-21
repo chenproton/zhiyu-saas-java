@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -69,15 +69,15 @@ public class SystemCourseNode extends BaseZhiyuEntity {
     private Integer difficulty;
 
     /** 知识点 ID 数组 */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> knowledgePointIds;
 
     /** 资源 ID 数组 */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> resourceIds;
 
     /** 能力点 ID 数组 */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> abilityPointIds;
 
     /** 评估数据（jsonb 列，存 JSON 文本） */

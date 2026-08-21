@@ -38,6 +38,7 @@ import org.dromara.zhiyu.mapper.scene.SceneReviewStepMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScoreRuleMapper;
 import org.dromara.zhiyu.mapper.scene.SceneRubricTemplateMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioTaskMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneEvalMethodService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,6 +82,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
     /** 试卷编码字符集（对齐 Go entityCodeAlphabet） */
     private static final String CODE_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+    private final SystemGuard systemGuard;
     private final SceneEvalMethodMapper evalMethodMapper;
     private final SceneEvalPointMapper evalPointMapper;
     private final SceneScoreRuleMapper scoreRuleMapper;
@@ -97,8 +99,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
     @Override
     public EvalMethodListResponse listMethods(String taskId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         List<SceneEvalMethod> methods = evalMethodMapper.selectList(
             QueryBuilder.lambda(SceneEvalMethod.class)
                 .eq(SceneEvalMethod::getTaskId, taskId)
@@ -154,8 +156,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public EvalMethodListResponse saveMethods(String taskId, SaveEvalMethodsRequest req) {
-        String tenantId = requireTenant();
-        String creatorId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String creatorId = systemGuard.requireUser();
 
         // 任务归属校验（task→tenant；对齐 Go TaskTenantID 判定）
         String taskTenantId = taskMapper.selectTenantId(taskId);
@@ -515,8 +517,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
     @Override
     public ListResponse<RubricTemplateDto> listTemplates(String keyword, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         LambdaQueryBuilder<SceneRubricTemplate> wrapper = QueryBuilder.lambda(SceneRubricTemplate.class)
@@ -537,15 +539,15 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
     @Override
     public RubricTemplateDto getTemplate(String id) {
-        requireTenant();
+        systemGuard.requireTenant();
         SceneRubricTemplate t = fetchOwnedTemplate(id);
         return toTemplateDto(t);
     }
 
     @Override
     public RubricTemplateDto createTemplate(RubricTemplateRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         validateTemplate(req);
         String id = java.util.UUID.randomUUID().toString();
         templateMapper.insertTemplate(id, tenantId, req.getName(), req.getMode(), coalesce(req.getTypes()),
@@ -559,8 +561,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
     @Override
     public RubricTemplateDto updateTemplate(String id, RubricTemplateRequest req) {
-        requireTenant();
-        requireUser();
+        systemGuard.requireTenant();
+        systemGuard.requireUser();
         SceneRubricTemplate existing = fetchOwnedTemplate(id);
         validateTemplate(req);
         templateMapper.updateTemplate(id, req.getName(), req.getMode(), coalesce(req.getTypes()),
@@ -574,8 +576,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
     @Override
     public String deleteTemplate(String id) {
-        requireTenant();
-        requireUser();
+        systemGuard.requireTenant();
+        systemGuard.requireUser();
         SceneRubricTemplate existing = fetchOwnedTemplate(id);
         templateMapper.softDelete(id, existing.getTenantId());
         return id;
@@ -678,7 +680,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
         if (t == null) {
             throw new ApiException(404, "not_found", "评分模板不存在");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!tenantId.equals(t.getTenantId())) {
             throw new ApiException(403, "forbidden", "权限不足");
         }
@@ -727,29 +729,6 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
     private List<String> coalesce(List<String> list) {
         return list == null ? List.of() : list;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "未授权");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String readField(Object row, String field) {

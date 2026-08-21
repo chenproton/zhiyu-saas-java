@@ -16,18 +16,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * PostgreSQL 数组列（uuid[]/varchar[]）↔ {@link List}&lt;String&gt; 类型处理器。
+ * MySQL JSON 数组列 ↔ {@link List}&lt;String&gt; 类型处理器（原 PG uuid[]/varchar[] 列已迁移为 JSON）。
  *
- * <p>zhiyu-saas 现有表大量使用 PG 数组列（schedule_entries.class_node_ids、
- * exam_usages.target_ids、announcements.target_roles 等），MyBatis-Plus 默认
- * 无法将 PG 数组映射为 Java List，这里按 Go 版 JSONSliceToStrings/parseUUIDs
- * 语义做读写转换（读取时逐元素 to string；写入按 text[] 元素创建）。</p>
+ * <p>zhiyu-saas 现有表大量数组语义列（schedule_entries.class_node_ids、
+ * exam_usages.target_ids、announcements.target_roles 等）在 MySQL 中以 JSON 文本存储，
+ * MyBatis-Plus 默认无法将 JSON 数组映射为 Java List，这里按 Go 版 JSONSliceToStrings/parseUUIDs
+ * 语义做读写转换（读：JSON 反序列化；写：JSON 序列化文本）。</p>
  *
  * @author zhiyu
  */
 @MappedTypes(List.class)
 @MappedJdbcTypes(JdbcType.VARCHAR)
-public class PgArrayTypeHandler extends BaseTypeHandler<List<String>> {
+public class JsonStringArrayTypeHandler extends BaseTypeHandler<List<String>> {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> LIST_REF = new TypeReference<>() {

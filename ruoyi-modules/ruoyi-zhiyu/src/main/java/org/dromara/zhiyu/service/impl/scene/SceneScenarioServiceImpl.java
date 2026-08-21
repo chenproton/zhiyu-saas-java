@@ -31,6 +31,7 @@ import org.dromara.zhiyu.mapper.scene.SceneCloneMapper;
 import org.dromara.zhiyu.mapper.scene.SceneResourceSnapshotMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioTaskMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneScenarioService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,6 +84,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
         "archived", Set.of("draft")
     );
 
+    private final SystemGuard systemGuard;
     private final SceneScenarioMapper scenarioMapper;
     private final SceneScenarioTaskMapper taskMapper;
     private final SceneCloneMapper cloneMapper;
@@ -98,8 +100,8 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     @Override
     public ListResponse<ScenarioDto> list(String search, String status, String batchId, String careerPositionId,
                                           long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         boolean student = isStudent();
@@ -119,7 +121,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     @Override
     public ScenarioDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         SceneScenario scenario = fetchOwned(id);
         // 学生仅可读已发布场景（决策 7：draft 对学生不可见，对齐 Go）
         if (isStudent() && !"published".equals(scenario.getStatus())) {
@@ -139,8 +141,8 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     @Override
     public ScenarioDto create(CreateScenarioRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -158,7 +160,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     @Override
     public ScenarioDto update(String id, UpdateScenarioRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         SceneScenario existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
 
@@ -185,7 +187,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         SceneScenario existing = fetchOwned(id);
         if (scenarioMapper.existsEvaluationResults(id)) {
             throw new ApiException(409, "conflict", "该场景已存在测评成绩，无法删除");
@@ -240,9 +242,9 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
      */
     @Transactional(rollbackFor = Exception.class)
     protected ScenarioDto transition(String id, String toStatus) {
-        requireUser();
+        systemGuard.requireUser();
         SceneScenario scenario = fetchOwned(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String currentStatus = scenario.getStatus();
 
         if (!canTransition(currentStatus, toStatus)) {
@@ -269,7 +271,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ScenarioDto review(String id, ReviewRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         String toStatus;
         if ("approved".equals(req.getStatus())) {
             toStatus = "approved";
@@ -279,7 +281,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
         SceneScenario scenario = fetchOwned(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         // CAS 审核：仅 pending 可审
         int rows = scenarioMapper.casReview(id, tenantId, toStatus);
         if (rows == 0) {
@@ -290,13 +292,13 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     @Override
     public ScenarioDto invite(String id, InviteRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         SceneScenario scenario = fetchOwned(id);
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
         }
         // 协作者必须属于本租户用户，防止跨租户协作者引用
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!userExistsInTenant(req.getUserId(), tenantId)) {
             throw new ApiException(400, "bad_request", "用户不存在或不属于本租户");
         }
@@ -307,8 +309,8 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ScenarioDto clone(String id, CloneRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         SceneCloneMapper.SourceScenarioRow src = cloneMapper.fetchSource(id);
         if (src == null) {
             throw new ApiException(404, "not_found", "场景方案不存在");
@@ -327,8 +329,8 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
 
     @Override
     public Map<String, Object> getSnapshot(String id, String version) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         Map<String, Object> bundle = snapshotService().getScenarioBundle(tenantId, id, version);
         if (bundle == null) {
             throw new ApiException(404, "not_found", "资源不存在或未发布");
@@ -910,29 +912,6 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

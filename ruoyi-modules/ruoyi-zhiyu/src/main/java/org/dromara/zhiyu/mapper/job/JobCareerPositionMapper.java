@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.job.JobCareerPosition;
 
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * 岗位 Mapper（career_positions 表，Go→Java 迁移）。
  *
- * <p>读取走 MyBatis-Plus 内置方法（数组列经 {@link PgArrayTypeHandler} 映射）；
+ * <p>读取走 MyBatis-Plus 内置方法（数组列经 {@link JsonStringArrayTypeHandler} 映射）；
  * 写入走自定义 SQL——uuid[]/text[] 数组列需显式 CAST 才能写入 PG 数组列。</p>
  *
  * @author zhiyu
@@ -29,9 +29,9 @@ public interface JobCareerPositionMapper extends BaseMapperPlus<JobCareerPositio
         + " version, status, created_by, collaborators, source_type, source_enterprise_id)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{batchId}, #{name}, #{shortName}, #{industryId},"
         + " #{positionType}, #{salaryMin}, #{salaryMax}, #{coverImage}, #{description},"
-        + " #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{careerPath}, #{version}, #{status}, #{createdBy},"
-        + " #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " COALESCE(#{sourceType}, 'school'), #{sourceEnterpriseId})")
     int insertPosition(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                        @Param("batchId") String batchId, @Param("name") String name,
@@ -51,9 +51,9 @@ public interface JobCareerPositionMapper extends BaseMapperPlus<JobCareerPositio
         + " batch_id = #{batchId}, name = #{name}, short_name = #{shortName}, industry_id = #{industryId},"
         + " position_type = #{positionType}, salary_min = #{salaryMin}, salary_max = #{salaryMax},"
         + " cover_image = #{coverImage}, description = #{description},"
-        + " requirements = #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " requirements = #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " career_path = #{careerPath}, version = #{version},"
-        + " collaborators = #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " collaborators = #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id}")
     int updatePosition(@Param("id") String id, @Param("batchId") String batchId, @Param("name") String name,
                        @Param("shortName") String shortName, @Param("industryId") String industryId,

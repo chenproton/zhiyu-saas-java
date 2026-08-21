@@ -23,11 +23,11 @@ public interface PartnerScenarioTaskMapper extends BaseMapperPlus<SceneScenarioT
         + " source_scenario_id, knowledge_point_ids, ability_point_ids, resource_ids, eval_data, tenant_id)"
         + " VALUES (#{id}, #{scenarioId}, #{name}, #{code}, #{sortOrder}, #{description}, #{detailedDescription},"
         + " #{descriptionPdf}, #{estimatedHours}, #{taskType}, #{difficulty}, #{background},"
-        + " #{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{isReferenced}, #{sourceScenarioId},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " CAST(#{evalData} AS JSON), #{tenantId})")
     int insertTask(@Param("id") String id, @Param("scenarioId") String scenarioId, @Param("name") String name,
                    @Param("code") String code, @Param("sortOrder") Integer sortOrder,
@@ -43,11 +43,11 @@ public interface PartnerScenarioTaskMapper extends BaseMapperPlus<SceneScenarioT
     @Update("UPDATE scenario_tasks SET scenario_id = #{scenarioId}, name = #{name}, code = #{code}, sort_order = #{sortOrder},"
         + " description = #{description}, detailed_description = #{detailedDescription}, description_pdf = #{descriptionPdf},"
         + " estimated_hours = #{estimatedHours}, task_type = #{taskType}, difficulty = #{difficulty}, background = #{background},"
-        + " dependency_ids = #{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " dependency_ids = #{dependencyIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " is_referenced = #{isReferenced}, source_scenario_id = #{sourceScenarioId},"
-        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " ability_point_ids = #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " ability_point_ids = #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " eval_data = CAST(#{evalData} AS JSON)"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateTask(@Param("id") String id, @Param("tenantId") String tenantId, @Param("scenarioId") String scenarioId,

@@ -30,7 +30,7 @@ public class SystemIndustryServiceImpl implements ISystemIndustryService {
     @Override
     public ListResponse<SystemIndustry> list(String search, String parentId, String enabled, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemIndustry> wrapper = QueryBuilder.lambda(SystemIndustry.class)
             .eq(SystemIndustry::getTenantId, tenantId);
         if (parentId != null && !parentId.isBlank()) {
@@ -108,10 +108,4 @@ public class SystemIndustryServiceImpl implements ISystemIndustryService {
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

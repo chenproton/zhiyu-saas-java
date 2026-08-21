@@ -12,6 +12,7 @@ import org.dromara.zhiyu.domain.dto.lesson.LessonDtos.UpsertHybridModuleRequest;
 import org.dromara.zhiyu.domain.lesson.HybridNodeModule;
 import org.dromara.zhiyu.mapper.lesson.HybridNodeModuleMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonHybridModuleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,12 +35,13 @@ public class LessonHybridModuleServiceImpl implements ILessonHybridModuleService
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final HybridNodeModuleMapper hybridMapper;
     private final SystemCourseNodeMapper nodeMapper;
 
     @Override
     public ListResponse<HybridNodeModuleDto> list(String nodeId, String courseId) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         List<HybridNodeModule> rows = hybridMapper.selectModules(tenantId, nodeId, courseId);
         List<HybridNodeModuleDto> items = rows.stream().map(this::toDto).toList();
         return ListResponse.of(items, items.size());
@@ -48,8 +50,8 @@ public class LessonHybridModuleServiceImpl implements ILessonHybridModuleService
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String batchSave(BatchSaveHybridModulesRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getNodeId() == null || req.getNodeId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -72,8 +74,8 @@ public class LessonHybridModuleServiceImpl implements ILessonHybridModuleService
 
     @Override
     public HybridNodeModuleDto upsert(UpsertHybridModuleRequest req, String urlId) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getNodeId() == null || req.getNodeId().isEmpty() || req.getModuleKey() == null
             || req.getModuleKey().isEmpty() || req.getMode() == null || req.getMode().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -107,8 +109,8 @@ public class LessonHybridModuleServiceImpl implements ILessonHybridModuleService
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (hybridMapper.selectModule(id, tenantId) == null) {
             throw new ApiException(404, "not_found", "混合模块不存在");
         }
@@ -146,19 +148,4 @@ public class LessonHybridModuleServiceImpl implements ILessonHybridModuleService
         }
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

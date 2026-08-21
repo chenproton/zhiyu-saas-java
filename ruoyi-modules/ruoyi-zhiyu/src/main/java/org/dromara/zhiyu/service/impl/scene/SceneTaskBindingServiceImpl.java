@@ -13,6 +13,7 @@ import org.dromara.zhiyu.mapper.scene.SceneScenarioMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioTaskMapper;
 import org.dromara.zhiyu.mapper.scene.SceneTaskAbilityBindingMapper;
 import org.dromara.zhiyu.mapper.scene.SceneTaskKnowledgeBindingMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneTaskBindingService;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
 
+    private final SystemGuard systemGuard;
     private final SceneTaskKnowledgeBindingMapper knowledgeMapper;
     private final SceneTaskAbilityBindingMapper abilityMapper;
     private final SceneScenarioTaskMapper taskMapper;
@@ -32,8 +34,8 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
 
     @Override
     public TaskKnowledgeBindingDto bindKnowledge(BindKnowledgeRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getTaskId()) || isBlank(req.getKnowledgePointId())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -45,8 +47,8 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
 
     @Override
     public String unbindKnowledge(String id) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         String taskId = knowledgeMapper.selectTaskId(id);
         if (taskId == null) {
             return id;
@@ -58,8 +60,8 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
 
     @Override
     public TaskAbilityBindingDto bindAbility(BindAbilityRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getTaskId()) || isBlank(req.getAbilityPointId())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -71,8 +73,8 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
 
     @Override
     public String unbindAbility(String id) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         String taskId = abilityMapper.selectTaskId(id);
         if (taskId == null) {
             return id;
@@ -125,19 +127,4 @@ public class SceneTaskBindingServiceImpl implements ISceneTaskBindingService {
         return s == null || s.isBlank();
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "未授权");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

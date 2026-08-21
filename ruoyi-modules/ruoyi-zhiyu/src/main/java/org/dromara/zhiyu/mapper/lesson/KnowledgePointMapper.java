@@ -27,7 +27,7 @@ public interface KnowledgePointMapper extends BaseMapperPlus<KnowledgePoint, Kno
     /** 创建知识点（granular_lesson_ids 为 uuid[]）。 */
     @Insert("INSERT INTO knowledge_points (id, tenant_id, name, code, description, linked, granular_lesson_ids, creator_id, source_type, source_id)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{code}, #{description}, #{linked},"
-        + " #{granularLessonIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{granularLessonIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{creatorId}, #{sourceType}, #{sourceId})")
     int insertKnowledgePoint(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                              @Param("code") String code, @Param("description") String description,
@@ -37,7 +37,7 @@ public interface KnowledgePointMapper extends BaseMapperPlus<KnowledgePoint, Kno
 
     /** 更新知识点（限定租户）。 */
     @Update("UPDATE knowledge_points SET name = #{name}, code = #{code}, description = #{description},"
-        + " linked = #{linked}, granular_lesson_ids = #{granularLessonIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " linked = #{linked}, granular_lesson_ids = #{granularLessonIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateKnowledgePoint(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                              @Param("code") String code, @Param("description") String description,
@@ -49,7 +49,7 @@ public interface KnowledgePointMapper extends BaseMapperPlus<KnowledgePoint, Kno
 
     /** 同步颗粒课对知识点的双向引用：追加（courses.knowledge_point_ids）。 */
     @Update("UPDATE courses SET knowledge_point_ids = JSON_ARRAY_APPEND(knowledge_point_ids, '$', #{kpId}), updated_at = NOW()"
-        + " WHERE tenant_id = #{tenantId} AND JSON_CONTAINS(CAST(#{courseIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
+        + " WHERE tenant_id = #{tenantId} AND JSON_CONTAINS(CAST(#{courseIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND NOT JSON_CONTAINS(knowledge_point_ids, JSON_QUOTE(#{kpId}), '$')")
     int appendKpToCourses(@Param("kpId") String kpId, @Param("tenantId") String tenantId,
                           @Param("courseIds") List<String> courseIds);
@@ -65,7 +65,7 @@ public interface KnowledgePointMapper extends BaseMapperPlus<KnowledgePoint, Kno
 
     /** 课程创建/更新时同步知识点颗粒课引用：追加课程 ID。 */
     @Update("UPDATE knowledge_points SET granular_lesson_ids = JSON_ARRAY_APPEND(granular_lesson_ids, '$', #{courseId}), updated_at = NOW()"
-        + " WHERE tenant_id = #{tenantId} AND JSON_CONTAINS(CAST(#{kpIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
+        + " WHERE tenant_id = #{tenantId} AND JSON_CONTAINS(CAST(#{kpIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND NOT JSON_CONTAINS(granular_lesson_ids, JSON_QUOTE(#{courseId}), '$')")
     int appendCourseToGranularLessons(@Param("courseId") String courseId, @Param("tenantId") String tenantId,
                                       @Param("kpIds") List<String> kpIds);

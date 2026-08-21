@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ public class KnowledgePoint extends BaseZhiyuEntity {
     private Boolean linked;
 
     /** 颗粒课 ID 数组 */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> granularLessonIds;
 
     /** 创建人 ID */

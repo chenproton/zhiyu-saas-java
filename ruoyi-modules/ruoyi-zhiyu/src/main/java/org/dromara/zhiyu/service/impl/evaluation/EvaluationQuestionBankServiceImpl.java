@@ -25,6 +25,7 @@ import org.dromara.zhiyu.mapper.evaluation.EvaluationQuestionBankMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationQuestionMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationRandomDrawQuestionMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationSnapshotMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.evaluation.IEvaluationQuestionBankService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,6 +72,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
         "archived", Set.of("draft")
     );
 
+    private final SystemGuard systemGuard;
     private final EvaluationQuestionBankMapper bankMapper;
     private final EvaluationQuestionMapper questionMapper;
     private final EvaluationRandomDrawQuestionMapper randomDrawMapper;
@@ -81,9 +83,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public ListResponse<QuestionBankDto> listBanks(String search, String status, long limit, long offset) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         // 确保用户草稿池存在（对齐 Go List 前置 EnsureDraftPool；失败仅记日志不阻断）
         try {
@@ -111,7 +113,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionBankDto getBank(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationQuestionBank bank = fetchBank(id);
         // 学生仅可读已发布题库（决策 7）
         if (isStudent() && !"published".equals(bank.getStatus())) {
@@ -123,8 +125,8 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     @Override
     @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto createBank(CreateQuestionBankRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -140,9 +142,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     @Override
     @Transactional(rollbackFor = Exception.class)
     public QuestionBankDto updateBank(String id, CreateQuestionBankRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationQuestionBank existing = fetchBank(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (Boolean.TRUE.equals(existing.getIsDraftPool())) {
             throw new ApiException(403, "forbidden", "草稿库不允许编辑");
         }
@@ -164,9 +166,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteBank(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationQuestionBank bank = fetchBank(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (Boolean.TRUE.equals(bank.getIsDraftPool())) {
             throw new ApiException(403, "forbidden", "草稿库不允许删除");
         }
@@ -190,7 +192,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionBankDto reviewBank(String id, ReviewRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         String toStatus;
         if ("approved".equals(req.getStatus())) {
             toStatus = "approved";
@@ -200,7 +202,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
         EvaluationQuestionBank bank = fetchBank(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         int rows = bankMapper.casTransition(id, tenantId, "pending", toStatus);
         if (rows == 0) {
             throw new ApiException(400, "bad_request", "题库不存在或不在待处理状态");
@@ -235,12 +237,12 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionBankDto inviteBank(String id, InviteRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationQuestionBank bank = fetchBank(id);
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!userInTenant(req.getUserId(), tenantId)) {
             throw new ApiException(400, "bad_request", "用户不存在或不属于本租户");
         }
@@ -253,9 +255,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
      */
     @Transactional(rollbackFor = Exception.class)
     protected QuestionBankDto transition(String id, String toStatus) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationQuestionBank bank = fetchBank(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (Boolean.TRUE.equals(bank.getIsDraftPool())) {
             throw new ApiException(400, "bad_request", "不能对草稿池执行此操作");
         }
@@ -281,8 +283,8 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public Map<String, Object> bankSnapshot(String id, String version) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         Map<String, Object> bundle = getQuestionBankBundle(tenantId, id, version);
         if (bundle == null) {
             throw new ApiException(404, "not_found", "资源不存在或未发布");
@@ -298,8 +300,8 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     @Override
     public ListResponse<QuestionDto> listQuestions(String search, String bankId, String type, String status,
                                                    long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 20);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 20);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<EvaluationQuestion> wrapper = QueryBuilder.lambda(EvaluationQuestion.class)
             .eq(EvaluationQuestion::getTenantId, tenantId);
@@ -324,14 +326,14 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionDto getQuestion(String id) {
-        requireUser();
+        systemGuard.requireUser();
         return toQuestionDto(fetchQuestion(id));
     }
 
     @Override
     public QuestionDto createQuestion(CreateQuestionRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getBankId() == null || req.getBankId().isEmpty() || req.getContent() == null || req.getContent().isEmpty()
             || req.getType() == null || req.getType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -349,9 +351,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public QuestionDto updateQuestion(String id, CreateQuestionRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationQuestion existing = fetchQuestion(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String bankId = req.getBankId() == null || req.getBankId().isEmpty() ? existing.getBankId() : req.getBankId();
         String type = req.getType() == null || req.getType().isEmpty() ? existing.getType() : req.getType();
         String content = req.getContent() == null || req.getContent().isEmpty() ? existing.getContent() : req.getContent();
@@ -376,9 +378,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public String deleteQuestion(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchQuestion(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         // 引用检查：题目已被试卷组卷时禁止删除（级联会损坏试卷快照）
         if (questionMapper.countQuestionRefs(id) > 0) {
             throw new ApiException(409, "conflict", "该题目已被试卷引用，无法删除");
@@ -391,8 +393,8 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int batchCreateQuestions(String bankId, List<CreateQuestionRequest> items) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (bankId == null || bankId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少题库ID");
         }
@@ -421,8 +423,8 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public ListResponse<RandomDrawQuestionDto> listRandomDraw(String search, String majorId, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 200);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 200);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<EvaluationRandomDrawQuestion> wrapper = QueryBuilder.lambda(EvaluationRandomDrawQuestion.class)
             .eq(EvaluationRandomDrawQuestion::getTenantId, tenantId);
@@ -443,14 +445,14 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public RandomDrawQuestionDto getRandomDraw(String id) {
-        requireUser();
+        systemGuard.requireUser();
         return toRandomDrawDto(fetchRandomDraw(id));
     }
 
     @Override
     public RandomDrawQuestionDto createRandomDraw(RandomDrawQuestionRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -465,9 +467,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public RandomDrawQuestionDto updateRandomDraw(String id, RandomDrawQuestionRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationRandomDrawQuestion existing = fetchRandomDraw(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -481,9 +483,9 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     @Override
     public String deleteRandomDraw(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchRandomDraw(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         randomDrawMapper.delete(QueryBuilder.lambda(EvaluationRandomDrawQuestion.class)
             .eq(EvaluationRandomDrawQuestion::getId, id).eq(EvaluationRandomDrawQuestion::getTenantId, tenantId).build());
         return id;
@@ -691,7 +693,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     // ==================== 内部 ====================
 
     private EvaluationQuestionBank fetchBank(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationQuestionBank bank = bankMapper.selectOne(QueryBuilder.lambda(EvaluationQuestionBank.class)
             .eq(EvaluationQuestionBank::getId, id).eq(EvaluationQuestionBank::getTenantId, tenantId).build());
         if (bank == null) {
@@ -706,7 +708,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     }
 
     private EvaluationQuestion fetchQuestion(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationQuestion q = questionMapper.selectOne(QueryBuilder.lambda(EvaluationQuestion.class)
             .eq(EvaluationQuestion::getId, id).eq(EvaluationQuestion::getTenantId, tenantId).build());
         if (q == null) {
@@ -716,7 +718,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     }
 
     private EvaluationRandomDrawQuestion fetchRandomDraw(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationRandomDrawQuestion q = randomDrawMapper.selectOne(
             QueryBuilder.lambda(EvaluationRandomDrawQuestion.class)
                 .eq(EvaluationRandomDrawQuestion::getId, id)
@@ -985,29 +987,6 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

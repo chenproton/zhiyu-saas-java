@@ -4,7 +4,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.job.JobPositionAbilityBinding;
 
 /**
@@ -54,7 +54,7 @@ public interface JobPositionAbilityBindingMapper extends BaseMapperPlus<JobPosit
         ) VALUES (
             #{id}, #{tenantId}, #{careerPositionId}, #{responsibilityId}, #{abilityPointId}, #{source},
             #{domain}, #{requiredLevel}, #{rubricDescription},
-            #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},
+            #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},
             #{weight}
         )
         ON DUPLICATE KEY UPDATE

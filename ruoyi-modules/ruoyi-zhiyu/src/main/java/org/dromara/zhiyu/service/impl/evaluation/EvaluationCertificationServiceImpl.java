@@ -42,6 +42,7 @@ import org.dromara.zhiyu.mapper.evaluation.EvaluationCertificationItemMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationCertificationMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationCertificationPointMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationCertificationTaskMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.evaluation.IEvaluationCertificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,6 +79,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     private static final List<String> MASTERY_LEVEL_ORDER =
         List.of("understand", "comprehend", "master", "proficient", "expert");
 
+    private final SystemGuard systemGuard;
     private final EvaluationCertificationMapper certMapper;
     private final EvaluationCertificationItemMapper itemMapper;
     private final EvaluationCertificationPointMapper pointMapper;
@@ -87,8 +89,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public ListResponse<CertificationRuleDto> listRules(String careerPositionId, String status, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<EvaluationCertificationRule> wrapper = QueryBuilder.lambda(EvaluationCertificationRule.class)
             .eq(EvaluationCertificationRule::getTenantId, tenantId);
@@ -107,14 +109,14 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationRuleDto getRule(String id) {
-        requireUser();
+        systemGuard.requireUser();
         return toRuleDto(fetchRule(id));
     }
 
     @Override
     public CertificationRuleDto createRule(CreateCertificationRuleRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -133,9 +135,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationRuleDto updateRule(String id, CreateCertificationRuleRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchRule(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -147,9 +149,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationRuleDto updateRuleStatus(String id, StatusRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchRule(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!"draft".equals(req.getStatus()) && !"published".equals(req.getStatus())) {
             throw new ApiException(400, "bad_request", "状态仅支持 draft/published");
         }
@@ -159,9 +161,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public String deleteRule(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchRule(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         certMapper.delete(QueryBuilder.lambda(EvaluationCertificationRule.class)
             .eq(EvaluationCertificationRule::getId, id)
             .eq(EvaluationCertificationRule::getTenantId, tenantId).build());
@@ -172,7 +174,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public ListResponse<CertificationAbilityItemDto> listItems(String ruleId) {
-        requireUser();
+        systemGuard.requireUser();
         List<EvaluationCertificationItem> rows = itemMapper.selectList(
             QueryBuilder.lambda(EvaluationCertificationItem.class)
                 .eq(EvaluationCertificationItem::getRuleId, ruleId)
@@ -183,8 +185,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationAbilityItemDto createItem(String ruleId, CreateCertificationItemRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -195,9 +197,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationAbilityItemDto updateItem(String id, CreateCertificationItemRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchItem(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -208,9 +210,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteItem(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchItem(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         certMapper.deletePointsByItem(id, tenantId);
         itemMapper.delete(QueryBuilder.lambda(EvaluationCertificationItem.class)
             .eq(EvaluationCertificationItem::getId, id)
@@ -222,7 +224,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public ListResponse<CertificationAbilityPointDto> listPoints(String itemId) {
-        requireUser();
+        systemGuard.requireUser();
         List<EvaluationCertificationPoint> rows = pointMapper.selectList(
             QueryBuilder.lambda(EvaluationCertificationPoint.class)
                 .eq(EvaluationCertificationPoint::getItemId, itemId)
@@ -233,8 +235,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationAbilityPointDto createPoint(String itemId, CreateCertificationPointRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getAbilityPointId() == null || req.getAbilityPointId().isEmpty()
             || req.getRequiredLevel() == null || req.getRequiredLevel().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -253,9 +255,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationAbilityPointDto updatePoint(String id, CreateCertificationPointRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchPoint(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getRequiredLevel() == null || req.getRequiredLevel().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -268,9 +270,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public String deletePoint(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchPoint(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         pointMapper.delete(QueryBuilder.lambda(EvaluationCertificationPoint.class)
             .eq(EvaluationCertificationPoint::getId, id)
             .eq(EvaluationCertificationPoint::getTenantId, tenantId).build());
@@ -281,8 +283,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationRelatedTaskDto createTask(String pointId, CertificationTaskRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         fetchPoint(pointId);
         if (req.getTaskId() == null || req.getTaskId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -296,9 +298,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationRelatedTaskDto updateTask(String id, CertificationTaskRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchTask(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         certMapper.updateTask(id, tenantId, req.getTaskId(),
             req.getMaxScore() == null ? new BigDecimal("100") : req.getMaxScore(),
             req.getWeight() == null ? BigDecimal.ZERO : req.getWeight());
@@ -307,9 +309,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public String deleteTask(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchTask(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         taskMapper.delete(QueryBuilder.lambda(EvaluationCertificationTask.class)
             .eq(EvaluationCertificationTask::getId, id)
             .eq(EvaluationCertificationTask::getTenantId, tenantId).build());
@@ -320,7 +322,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationFullRuleResponse getFullRule(String id) {
-        requireUser();
+        systemGuard.requireUser();
         CertificationRuleDto rule = toRuleDto(fetchRule(id));
         List<Map<String, Object>> itemRows = certMapper.listFullItems(id);
         List<String> itemIds = itemRows.stream().map(r -> str(r.get("id"))).toList();
@@ -378,9 +380,9 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CertificationRuleDto putFullRule(String id, PutFullCertificationRuleRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchRule(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -427,8 +429,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     @Override
     public CertificationPositionModelDto getPositionModel(String positionId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         Map<String, Object> ruleRow = certMapper.findPositionRule(tenantId, positionId);
         RuleRefDto rule = null;
         String ruleId = "";
@@ -449,8 +451,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CertificationRuleDto putWeights(String positionId, CertificationWeightsPayload req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         checkPositionTenant(tenantId, positionId);
         // 校验权重和
         BigDecimal pointSum = BigDecimal.ZERO;
@@ -501,8 +503,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, String> putPointLevels(String positionId, String abilityPointId, PutPointLevelsRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         checkPositionTenant(tenantId, positionId);
         if (abilityPointId == null || abilityPointId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -520,8 +522,8 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     @Transactional(rollbackFor = Exception.class)
     public Map<String, String> putPointTaskWeights(String positionId, String abilityPointId,
                                                    PutPointTaskWeightsRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         checkPositionTenant(tenantId, positionId);
         if (abilityPointId == null || abilityPointId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -730,7 +732,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     // ==================== 内部 ====================
 
     private EvaluationCertificationRule fetchRule(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationCertificationRule rule = certMapper.selectOne(QueryBuilder.lambda(EvaluationCertificationRule.class)
             .eq(EvaluationCertificationRule::getId, id)
             .eq(EvaluationCertificationRule::getTenantId, tenantId).build());
@@ -741,7 +743,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     }
 
     private EvaluationCertificationItem fetchItem(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationCertificationItem item = itemMapper.selectOne(QueryBuilder.lambda(EvaluationCertificationItem.class)
             .eq(EvaluationCertificationItem::getId, id)
             .eq(EvaluationCertificationItem::getTenantId, tenantId).build());
@@ -752,7 +754,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     }
 
     private EvaluationCertificationPoint fetchPoint(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationCertificationPoint point = pointMapper.selectOne(QueryBuilder.lambda(EvaluationCertificationPoint.class)
             .eq(EvaluationCertificationPoint::getId, id)
             .eq(EvaluationCertificationPoint::getTenantId, tenantId).build());
@@ -763,7 +765,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
     }
 
     private EvaluationCertificationTask fetchTask(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationCertificationTask task = taskMapper.selectOne(QueryBuilder.lambda(EvaluationCertificationTask.class)
             .eq(EvaluationCertificationTask::getId, id)
             .eq(EvaluationCertificationTask::getTenantId, tenantId).build());
@@ -879,29 +881,6 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
         } catch (Exception e) {
             return "[]";
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String str(Object o) {

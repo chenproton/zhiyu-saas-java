@@ -133,9 +133,9 @@ public interface LessonCourseCloneMapper extends BaseMapperPlus<LessonCourse, Le
         + " VALUES (#{id}, #{tenantId}, #{courseId}, #{parentId}, #{name}, #{code}, #{sortOrder},"
         + " #{refType}, #{sourceId}, #{sourceName}, #{teachingGoals}, #{detailedDescription}, #{descriptionPdf},"
         + " #{background}, #{estimatedHours}, #{duration}, #{difficulty},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " CAST(#{evalData} AS JSON), #{status})")
     int insertCloneNode(@Param("id") String id, @Param("tenantId") String tenantId, @Param("courseId") String courseId,
                         @Param("parentId") String parentId, @Param("name") String name, @Param("code") String code,

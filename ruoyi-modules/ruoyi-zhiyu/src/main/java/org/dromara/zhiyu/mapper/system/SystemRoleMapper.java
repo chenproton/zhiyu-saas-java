@@ -76,7 +76,7 @@ public interface SystemRoleMapper extends BaseMapperPlus<SystemRole, SystemRole>
 
     /** 批量查询用户角色绑定（id/code/name，attachRoles 用）。 */
     @Select("SELECT ur.user_id, r.id, r.code, r.name FROM user_roles ur JOIN roles r ON r.id = ur.role_id"
-        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(ur.user_id), '$')"
+        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(ur.user_id), '$')"
         + " ORDER BY r.created_at")
     List<java.util.Map<String, Object>> selectUserRoleRefs(@Param("userIds") List<String> userIds);
 

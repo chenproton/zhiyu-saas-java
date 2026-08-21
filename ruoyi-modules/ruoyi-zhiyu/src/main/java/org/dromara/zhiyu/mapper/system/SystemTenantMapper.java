@@ -62,7 +62,7 @@ public interface SystemTenantMapper extends BaseMapperPlus<ZhiyuTenant, ZhiyuTen
     @Update("UPDATE tenants SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
     int updateStatus(@Param("id") String id, @Param("status") String status);
 
-    @Update("UPDATE tenants SET admin_ids = #{adminIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} WHERE id = #{id}")
+    @Update("UPDATE tenants SET admin_ids = #{adminIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} WHERE id = #{id}")
     int updateAdminIds(@Param("id") String id, @Param("adminIds") List<String> adminIds);
 
     @Delete("DELETE FROM users WHERE tenant_id = #{tenantId}")

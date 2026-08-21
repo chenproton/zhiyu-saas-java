@@ -30,7 +30,7 @@ public class SystemResourceCodeServiceImpl implements ISystemResourceCodeService
     @Override
     public ListResponse<SystemResourceCode> list(String search, String type, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemResourceCode> wrapper = QueryBuilder.lambda(SystemResourceCode.class)
             .eq(SystemResourceCode::getTenantId, tenantId);
         if (type != null && !type.isBlank()) {
@@ -99,10 +99,4 @@ public class SystemResourceCodeServiceImpl implements ISystemResourceCodeService
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

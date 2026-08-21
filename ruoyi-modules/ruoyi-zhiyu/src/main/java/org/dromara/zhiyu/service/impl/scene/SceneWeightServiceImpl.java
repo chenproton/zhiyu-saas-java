@@ -11,6 +11,7 @@ import org.dromara.zhiyu.domain.dto.scene.SceneDtos.WeightRequest;
 import org.dromara.zhiyu.domain.scene.SceneWeightConfig;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioMapper;
 import org.dromara.zhiyu.mapper.scene.SceneWeightConfigMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneWeightService;
 import org.springframework.stereotype.Service;
 
@@ -27,13 +28,14 @@ import java.util.List;
 @Service
 public class SceneWeightServiceImpl implements ISceneWeightService {
 
+    private final SystemGuard systemGuard;
     private final SceneWeightConfigMapper weightMapper;
     private final SceneScenarioMapper scenarioMapper;
 
     @Override
     public ListResponse<WeightDto> list(String scenarioId, String taskId, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         LambdaQueryBuilder<SceneWeightConfig> wrapper = QueryBuilder.lambda(SceneWeightConfig.class)
@@ -57,8 +59,8 @@ public class SceneWeightServiceImpl implements ISceneWeightService {
 
     @Override
     public WeightDto upsert(WeightRequest req, String urlId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getScenarioId() == null || req.getScenarioId().isEmpty()
             || req.getTaskId() == null || req.getTaskId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -106,22 +108,6 @@ public class SceneWeightServiceImpl implements ISceneWeightService {
         return dto;
     }
 
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "未授权");
-        }
-        return userId;
-    }
-
     private void verifyTenantOwnership(String entityTenantId) {
         String tenantId = TenantContext.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
@@ -132,10 +118,4 @@ public class SceneWeightServiceImpl implements ISceneWeightService {
         }
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

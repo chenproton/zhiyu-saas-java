@@ -9,6 +9,7 @@ import org.dromara.zhiyu.domain.dto.scene.SceneDtos.GradeMappingRequest;
 import org.dromara.zhiyu.domain.scene.SceneGradeMapping;
 import org.dromara.zhiyu.mapper.scene.SceneGradeMappingMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneGradeMappingService;
 import org.springframework.stereotype.Service;
 
@@ -24,15 +25,16 @@ import java.util.UUID;
 @Service
 public class SceneGradeMappingServiceImpl implements ISceneGradeMappingService {
 
+    private final SystemGuard systemGuard;
     private final SceneGradeMappingMapper gradeMapper;
     private final SceneScenarioMapper scenarioMapper;
 
     @Override
     public ListResponse<GradeMappingDto> list(String scenarioId, String taskId, long limit, long offset) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         List<SceneGradeMapping> rows = gradeMapper.selectMappings(tenantId, scenarioId, taskId);
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         long total = rows.size();
         int from = (int) Math.min(safeOffset, rows.size());
@@ -43,8 +45,8 @@ public class SceneGradeMappingServiceImpl implements ISceneGradeMappingService {
 
     @Override
     public GradeMappingDto upsert(GradeMappingRequest req, String urlId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getScenarioId()) || isBlank(req.getLevel())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -79,8 +81,8 @@ public class SceneGradeMappingServiceImpl implements ISceneGradeMappingService {
 
     @Override
     public String delete(String id) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         String scenarioId = gradeMapper.selectScenarioId(id);
         if (scenarioId == null) {
             throw new ApiException(404, "not_found", "等级映射不存在");
@@ -125,26 +127,4 @@ public class SceneGradeMappingServiceImpl implements ISceneGradeMappingService {
         return s == null || s.isBlank();
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "未授权");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

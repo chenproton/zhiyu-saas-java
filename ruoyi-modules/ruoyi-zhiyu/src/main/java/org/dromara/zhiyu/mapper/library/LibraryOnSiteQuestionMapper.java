@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.library.LibraryOnSiteQuestion;
 
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.List;
  * 现场题库 Mapper（on_site_question_library 表）。
  *
  * <p>列表走自定义 SQL（tenant 过滤 + question_text/answer LIKE 搜索 + 分页），
- * 数组列经 {@link PgArrayTypeHandler} 读写；插入/更新显式 cast uuid[]/text[]，
+ * 数组列经 {@link JsonStringArrayTypeHandler} 读写；插入/更新显式 cast uuid[]/text[]，
  * 对齐 Go store/on_site_question_library.go 语义。</p>
  *
  * @author zhiyu
@@ -41,8 +41,8 @@ public interface LibraryOnSiteQuestionMapper extends BaseMapperPlus<LibraryOnSit
     @Select("<script>SELECT " + SELECT_COLUMNS + " FROM on_site_question_library " + SEARCH_FRAGMENT
         + " ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     @Results({
-        @Result(column = "knowledge_point_ids", property = "knowledgePointIds", typeHandler = PgArrayTypeHandler.class),
-        @Result(column = "tags", property = "tags", typeHandler = PgArrayTypeHandler.class)
+        @Result(column = "knowledge_point_ids", property = "knowledgePointIds", typeHandler = JsonStringArrayTypeHandler.class),
+        @Result(column = "tags", property = "tags", typeHandler = JsonStringArrayTypeHandler.class)
     })
     List<LibraryOnSiteQuestion> selectQuestionPage(@Param("tenantId") String tenantId, @Param("search") String search,
                                                    @Param("limit") int limit, @Param("offset") int offset);
@@ -58,8 +58,8 @@ public interface LibraryOnSiteQuestionMapper extends BaseMapperPlus<LibraryOnSit
      */
     @Insert("INSERT INTO on_site_question_library (id, tenant_id, question_text, answer, question_type, score, difficulty, knowledge_point_ids, tags, creator_id)"
         + " VALUES (#{id}, #{tenantId}, #{questionText}, #{answer}, #{questionType}, #{score}, #{difficulty},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{creatorId})")
     int insertQuestion(@Param("id") String id, @Param("tenantId") String tenantId,
                        @Param("questionText") String questionText, @Param("answer") String answer,
@@ -73,8 +73,8 @@ public interface LibraryOnSiteQuestionMapper extends BaseMapperPlus<LibraryOnSit
     @Update("UPDATE on_site_question_library SET"
         + " question_text = #{questionText}, answer = #{answer}, question_type = #{questionType},"
         + " score = #{score}, difficulty = #{difficulty},"
-        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " tags = #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " tags = #{tags, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " updated_at = NOW()"
         + " WHERE id = #{id}")
     int updateQuestion(@Param("id") String id, @Param("questionText") String questionText,

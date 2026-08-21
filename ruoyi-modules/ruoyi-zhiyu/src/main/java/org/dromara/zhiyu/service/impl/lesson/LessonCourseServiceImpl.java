@@ -38,6 +38,7 @@ import org.dromara.zhiyu.mapper.portal.PortalLessonBatchMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
 import org.dromara.zhiyu.mapper.portal.PortalResourceSnapshotMapper;
 import org.dromara.zhiyu.mapper.portal.PortalViewCounterMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonCourseService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,6 +77,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         "archived", Set.of("draft")
     );
 
+    private final SystemGuard systemGuard;
     private final LessonCourseMapper courseMapper;
     private final LessonCourseCloneMapper cloneMapper;
     private final PortalResourceSnapshotMapper snapshotMapper;
@@ -94,8 +96,8 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Override
     public ListResponse<CourseDto> list(String search, String type, String category, String status, String batchId,
                                         long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         String effectiveStatus = status;
@@ -112,7 +114,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     @Override
     public CourseDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         LessonCourse course = fetchOwned(id);
         if (isStudent() && !"published".equals(course.getStatus())) {
             throw new ApiException(404, "not_found", "课程不存在");
@@ -122,8 +124,8 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     @Override
     public CourseDto create(CreateCourseRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()
             || req.getType() == null || req.getType().isEmpty()
             || req.getCategory() == null || req.getCategory().isEmpty()) {
@@ -153,7 +155,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CourseDto update(String id, UpdateCourseRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         LessonCourse existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
 
@@ -188,7 +190,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
         boolean replaceBindings = req.getKnowledgePointIds() != null || req.getResourceIds() != null;
         if (replaceBindings) {
-            replaceCourseBindings(tenantId, id, requireUser(), kpIds, resIds);
+            replaceCourseBindings(tenantId, id, systemGuard.requireUser(), kpIds, resIds);
             syncKpGranularLessons(tenantId, id, kpIds);
         }
         return assembleDetail(fetchOwned(id), tenantId);
@@ -197,7 +199,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         LessonCourse existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
         if (courseMapper.existsEvaluationResults(id)) {
@@ -247,7 +249,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CourseDto review(String id, ReviewRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         String toStatus;
         if ("approved".equals(req.getStatus())) {
             toStatus = "approved";
@@ -266,7 +268,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     @Override
     public CourseDto invite(String id, InviteRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         LessonCourse course = fetchOwned(id);
         String tenantId = course.getTenantId();
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
@@ -282,8 +284,8 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CourseDto clone(String id, CloneCourseRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         LessonCourseCloneMapper.SourceCourseRow src = cloneMapper.selectSource(id);
         if (src == null) {
             throw new ApiException(404, "not_found", "课程不存在");
@@ -306,8 +308,8 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     @Override
     public Map<String, Object> getSnapshot(String id, String version) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         String v = version;
         if (v == null || v.isEmpty()) {
             v = snapshotMapper.selectLatestVersion(tenantId, "courses", id);
@@ -340,7 +342,7 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
 
     @Transactional(rollbackFor = Exception.class)
     protected CourseDto transition(String id, String toStatus) {
-        requireUser();
+        systemGuard.requireUser();
         LessonCourse course = fetchOwned(id);
         String tenantId = course.getTenantId();
         String currentStatus = course.getStatus();
@@ -1063,29 +1065,6 @@ public class LessonCourseServiceImpl implements ILessonCourseService {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, long defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String generateUniqueCode(String tenantId, String prefix) {

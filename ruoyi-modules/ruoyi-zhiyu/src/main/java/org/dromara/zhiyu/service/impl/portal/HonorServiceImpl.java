@@ -13,6 +13,7 @@ import org.dromara.zhiyu.domain.portal.PortalUserRole;
 import org.dromara.zhiyu.mapper.portal.PortalRoleMapper;
 import org.dromara.zhiyu.mapper.portal.PortalStudentHonorMapper;
 import org.dromara.zhiyu.mapper.portal.PortalUserRoleMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.portal.IHonorService;
 import org.springframework.stereotype.Service;
 
@@ -28,14 +29,15 @@ import java.util.List;
 @Service
 public class HonorServiceImpl implements IHonorService {
 
+    private final SystemGuard systemGuard;
     private final PortalStudentHonorMapper honorMapper;
     private final PortalRoleMapper roleMapper;
     private final PortalUserRoleMapper userRoleMapper;
 
     @Override
     public ListResponse<HonorItem> list(String userId) {
-        String currentUserId = requireUser();
-        String tenantId = requireTenant();
+        String currentUserId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         String targetUserId = userId;
         if (hasRole(currentUserId, tenantId, "student")) {
             targetUserId = currentUserId;
@@ -59,8 +61,8 @@ public class HonorServiceImpl implements IHonorService {
 
     @Override
     public String create(HonorUpsertRequest req) {
-        String currentUserId = requireUser();
-        String tenantId = requireTenant();
+        String currentUserId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         requireStudent(currentUserId, tenantId);
         if (req.getName() == null || req.getName().isBlank()) {
             throw new ApiException(400, "bad_request", "荣誉名称不能为空");
@@ -79,8 +81,8 @@ public class HonorServiceImpl implements IHonorService {
 
     @Override
     public String update(String id, HonorUpsertRequest req) {
-        String currentUserId = requireUser();
-        String tenantId = requireTenant();
+        String currentUserId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         requireStudent(currentUserId, tenantId);
         if (req.getName() == null || req.getName().isBlank()) {
             throw new ApiException(400, "bad_request", "荣誉名称不能为空");
@@ -103,8 +105,8 @@ public class HonorServiceImpl implements IHonorService {
 
     @Override
     public String delete(String id) {
-        String currentUserId = requireUser();
-        String tenantId = requireTenant();
+        String currentUserId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         requireStudent(currentUserId, tenantId);
         honorMapper.delete(
             QueryBuilder.lambda(PortalStudentHonor.class)
@@ -124,22 +126,6 @@ public class HonorServiceImpl implements IHonorService {
         item.setFileName(h.getFileName());
         item.setFileUrl(h.getFileUrl());
         return item;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
     }
 
     private void requireStudent(String userId, String tenantId) {

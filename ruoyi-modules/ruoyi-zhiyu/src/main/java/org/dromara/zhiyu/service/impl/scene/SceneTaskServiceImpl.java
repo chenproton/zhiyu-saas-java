@@ -18,6 +18,7 @@ import org.dromara.zhiyu.domain.scene.SceneScenarioTask;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioTaskMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneTaskService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,14 +51,15 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final SceneScenarioTaskMapper taskMapper;
     private final SceneScenarioMapper scenarioMapper;
     private final ZhiyuUserMapper userMapper;
 
     @Override
     public ListResponse<ScenarioTaskDto> list(String scenarioId, String search, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         // 学生仅可查已发布场景的任务；不带 scenarioId 的列表请求对学生会返回空列表
@@ -85,7 +87,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
 
     @Override
     public ScenarioTaskDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         SceneScenarioTask task = fetchOwned(id);
         // 学生仅可查看已发布场景的任务
         if (isStudent()) {
@@ -99,8 +101,8 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
 
     @Override
     public ScenarioTaskDto create(CreateScenarioTaskRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getScenarioId() == null || req.getScenarioId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()
             || req.getCode() == null || req.getCode().isEmpty()
@@ -126,8 +128,8 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
 
     @Override
     public ScenarioTaskDto update(String id, CreateScenarioTaskRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         SceneScenarioTask task = fetchOwned(id);
         if (task.getTenantId() == null) {
             throw new ApiException(403, "forbidden", "缺少租户信息");
@@ -159,7 +161,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         SceneScenarioTask task = fetchOwned(id);
         if (task.getTenantId() == null) {
             throw new ApiException(403, "forbidden", "缺少租户信息");
@@ -181,8 +183,8 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean reorder(ReorderTasksRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getScenarioId() == null || req.getScenarioId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少场景ID");
         }
@@ -433,29 +435,6 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
             log.warn("学生角色判定失败，降级为非学生 userId={}", userId, e);
             return false;
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "未授权");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private boolean isEmpty(String s) {

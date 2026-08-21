@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.job;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -11,6 +12,7 @@ import org.dromara.zhiyu.domain.dto.job.JobDtos.AbilityDomainRequest;
 import org.dromara.zhiyu.domain.job.JobAbilityDomain;
 import org.dromara.zhiyu.mapper.job.JobAbilityDomainMapper;
 import org.dromara.zhiyu.mapper.job.JobCareerPositionMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobAbilityDomainService;
 import org.springframework.stereotype.Service;
 
@@ -29,14 +31,15 @@ import java.util.List;
 @Service
 public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
 
+    private final SystemGuard systemGuard;
     private final JobAbilityDomainMapper domainMapper;
     private final JobCareerPositionMapper positionMapper;
 
     @Override
     public ListResponse<AbilityDomainDto> list(String careerPositionId, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobAbilityDomain> wrapper = QueryBuilder.lambda(JobAbilityDomain.class)
             .eq(JobAbilityDomain::getTenantId, tenantId)
@@ -54,8 +57,8 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
 
     @Override
     public AbilityDomainDto get(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobAbilityDomain domain = domainMapper.selectById(id);
         if (domain == null) {
             throw new ApiException(404, "not_found", "能力域不存在");
@@ -66,8 +69,8 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
 
     @Override
     public AbilityDomainDto create(AbilityDomainRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -78,7 +81,7 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
         domain.setTenantId(tenantId);
         domain.setCareerPositionId(req.getCareerPositionId());
         domain.setName(req.getName());
-        domain.setDescription(blankToNull(req.getDescription()));
+        domain.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         domain.setBindingIds(coalesce(req.getBindingIds()));
         domain.setSortOrder(req.getSortOrder() == null ? 0 : req.getSortOrder());
         domainMapper.insert(domain);
@@ -87,8 +90,8 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
 
     @Override
     public AbilityDomainDto update(String id, AbilityDomainRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobAbilityDomain existing = domainMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "能力域不存在");
@@ -104,7 +107,7 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
         update.setId(id);
         update.setCareerPositionId(req.getCareerPositionId());
         update.setName(req.getName());
-        update.setDescription(blankToNull(req.getDescription()));
+        update.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         update.setBindingIds(coalesce(req.getBindingIds()));
         update.setSortOrder(req.getSortOrder() == null ? 0 : req.getSortOrder());
         domainMapper.updateById(update);
@@ -113,8 +116,8 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobAbilityDomain existing = domainMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "能力域不存在");
@@ -144,22 +147,6 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
         return dto;
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
     private void verifyTenantOwnership(String entityTenantId) {
         String tenantId = TenantContext.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
@@ -168,17 +155,6 @@ public class JobAbilityDomainServiceImpl implements IJobAbilityDomainService {
         if (entityTenantId != null && !entityTenantId.equals(tenantId)) {
             throw new ApiException(403, "forbidden", "无权操作：资源不属于您的租户");
         }
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 
     private List<String> coalesce(List<String> list) {

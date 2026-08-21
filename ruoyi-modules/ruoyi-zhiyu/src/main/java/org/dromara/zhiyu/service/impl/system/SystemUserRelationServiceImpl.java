@@ -31,7 +31,7 @@ public class SystemUserRelationServiceImpl implements ISystemUserRelationService
     @Override
     public ListResponse<UserRelationItem> list(String search, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         String kw = search == null ? "" : search;
         List<Map<String, Object>> rows = relationMapper.selectPage(tenantId, kw, safeLimit, safeOffset);
@@ -107,10 +107,4 @@ public class SystemUserRelationServiceImpl implements ISystemUserRelationService
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

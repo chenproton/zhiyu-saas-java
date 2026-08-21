@@ -12,6 +12,7 @@ import org.dromara.zhiyu.domain.dto.lesson.LessonDtos.NodeResourceDto;
 import org.dromara.zhiyu.mapper.lesson.LessonResourceMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonResourceService;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +28,7 @@ import java.util.UUID;
 @Service
 public class LessonResourceServiceImpl implements ILessonResourceService {
 
+    private final SystemGuard systemGuard;
     private final LessonResourceMapper resourceMapper;
     private final SystemCourseNodeMapper nodeMapper;
     private final LessonCourseMapper courseMapper;
@@ -35,8 +37,8 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public ListResponse<NodeResourceDto> listNodeResources(String nodeId, String search, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 200);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 200);
         long safeOffset = Math.max(offset, 0);
         long total = resourceMapper.countNodeResourcePage(tenantId, nodeId, toLikePattern(search));
         List<NodeResourceDto> items = resourceMapper.selectNodeResourcePage(tenantId, nodeId, toLikePattern(search),
@@ -49,8 +51,8 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public NodeResourceDto createNodeResource(CreateNodeResourceRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getNodeId() == null || req.getNodeId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()
             || req.getType() == null || req.getType().isEmpty()) {
@@ -75,8 +77,8 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public String bindNodeResource(BindNodeResourceRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getNodeId() == null || req.getNodeId().isEmpty()
             || req.getResourceId() == null || req.getResourceId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -89,12 +91,12 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public String unbindNodeResource(String id) {
-        requireUser();
+        systemGuard.requireUser();
         String nodeId = resourceMapper.selectNodeBindingTarget(id);
         if (nodeId == null) {
             return id;
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         checkNodeTenant(nodeId, tenantId);
         resourceMapper.deleteNodeBinding(id);
         return id;
@@ -104,8 +106,8 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public ListResponse<NodeResourceDto> listCourseResources(String courseId, String search, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 200);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 200);
         long safeOffset = Math.max(offset, 0);
         long total = resourceMapper.countCourseResourcePage(tenantId, courseId, toLikePattern(search));
         List<NodeResourceDto> items = resourceMapper.selectCourseResourcePage(tenantId, courseId, toLikePattern(search),
@@ -115,8 +117,8 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public NodeResourceDto createCourseResource(CreateCourseResourceRequest req) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCourseId() == null || req.getCourseId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()
             || req.getType() == null || req.getType().isEmpty()) {
@@ -143,8 +145,8 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public String bindCourseResource(BindCourseResourceRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCourseId() == null || req.getCourseId().isEmpty()
             || req.getResourceId() == null || req.getResourceId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -158,12 +160,12 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
 
     @Override
     public String unbindCourseResource(String id) {
-        requireUser();
+        systemGuard.requireUser();
         String courseId = resourceMapper.selectCourseBindingTarget(id);
         if (courseId == null) {
             return id;
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         checkCourseTenant(courseId, tenantId);
         // 解绑后同步 courses.resource_ids 聚合字段（resource_id 需先取回，幂等语义）
         resourceMapper.deleteCourseBinding(id);
@@ -195,26 +197,4 @@ public class LessonResourceServiceImpl implements ILessonResourceService {
         return "%" + escaped + "%";
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, long defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

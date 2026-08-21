@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,7 +41,7 @@ public class SceneEvalPoint extends BaseZhiyuEntity {
     private String subType;
 
     /** 类型（varchar[]） */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> types;
 
     /** 权重 */
@@ -54,11 +54,11 @@ public class SceneEvalPoint extends BaseZhiyuEntity {
     private String gradeMapping;
 
     /** 知识点 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> knowledgePointIds;
 
     /** 能力点 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> abilityPointIds;
 
     /** 排序序号 */

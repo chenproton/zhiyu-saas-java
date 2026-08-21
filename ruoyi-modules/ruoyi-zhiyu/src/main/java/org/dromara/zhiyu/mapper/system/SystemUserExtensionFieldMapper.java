@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.system.SystemUserExtensionField;
 
 import java.util.List;
@@ -22,7 +22,7 @@ public interface SystemUserExtensionFieldMapper extends BaseMapperPlus<SystemUse
         + " applicable_role_codes, slot_number, created_at FROM user_extension_fields"
         + " WHERE tenant_id = #{tenantId} ORDER BY slot_number ASC")
     @Results({
-        @Result(column = "applicable_role_codes", property = "applicableRoleCodes", typeHandler = PgArrayTypeHandler.class)
+        @Result(column = "applicable_role_codes", property = "applicableRoleCodes", typeHandler = JsonStringArrayTypeHandler.class)
     })
     List<SystemUserExtensionField> selectByTenant(@Param("tenantId") String tenantId);
 
@@ -30,12 +30,12 @@ public interface SystemUserExtensionFieldMapper extends BaseMapperPlus<SystemUse
         + " applicable_role_codes, slot_number, created_at FROM user_extension_fields"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     @Results({
-        @Result(column = "applicable_role_codes", property = "applicableRoleCodes", typeHandler = PgArrayTypeHandler.class)
+        @Result(column = "applicable_role_codes", property = "applicableRoleCodes", typeHandler = JsonStringArrayTypeHandler.class)
     })
     SystemUserExtensionField selectByIdAndTenant(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Update("UPDATE user_extension_fields SET field_name = #{fieldName}, is_enabled = #{isEnabled},"
-        + " is_required = #{isRequired}, applicable_role_codes = #{applicableRoleCodes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}"
+        + " is_required = #{isRequired}, applicable_role_codes = #{applicableRoleCodes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateField(@Param("id") String id, @Param("tenantId") String tenantId, @Param("fieldName") String fieldName,
                     @Param("isEnabled") Boolean isEnabled, @Param("isRequired") Boolean isRequired,

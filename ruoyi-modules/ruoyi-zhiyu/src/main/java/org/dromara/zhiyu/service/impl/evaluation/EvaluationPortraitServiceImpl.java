@@ -22,6 +22,7 @@ import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationArchiveMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationJobAbilityMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationPortraitMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.evaluation.IEvaluationPortraitService;
 import org.springframework.stereotype.Service;
 
@@ -47,6 +48,7 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final EvaluationPortraitMapper portraitMapper;
     private final EvaluationArchiveMapper archiveMapper;
     private final EvaluationJobAbilityMapper jobAbilityMapper;
@@ -56,14 +58,14 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
     @Override
     public ListResponse<StudentAbilityPortraitDto> listPortraits(String userId, String careerPositionId,
                                                                  long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<EvaluationStudentPortrait> wrapper = QueryBuilder.lambda(EvaluationStudentPortrait.class)
             .eq(EvaluationStudentPortrait::getTenantId, tenantId);
         // 学生仅可查看本人的画像
         if (isStudent()) {
-            wrapper.eq(EvaluationStudentPortrait::getUserId, requireUser());
+            wrapper.eq(EvaluationStudentPortrait::getUserId, systemGuard.requireUser());
         } else {
             if (userId != null && !userId.isBlank()) {
                 wrapper.eq(EvaluationStudentPortrait::getUserId, userId);
@@ -81,8 +83,8 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
 
     @Override
     public StudentAbilityPortraitDto getPortrait(String id) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         EvaluationStudentPortrait p = portraitMapper.selectOne(QueryBuilder.lambda(EvaluationStudentPortrait.class)
             .eq(EvaluationStudentPortrait::getId, id)
             .eq(EvaluationStudentPortrait::getTenantId, tenantId).build());
@@ -90,7 +92,7 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
             throw new ApiException(404, "not_found", "学生画像不存在");
         }
         // 学生仅可查看本人的画像
-        if (isStudent() && !requireUser().equals(p.getUserId())) {
+        if (isStudent() && !systemGuard.requireUser().equals(p.getUserId())) {
             throw new ApiException(403, "forbidden", "权限不足");
         }
         return toPortraitDto(p);
@@ -98,8 +100,8 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
 
     @Override
     public StudentAbilityPortraitDto generatePortrait(GeneratePortraitRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
         }
@@ -138,8 +140,8 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
     @Override
     public ListResponse<StudentAbilityArchiveDto> listArchives(String userId, String materialType,
                                                                long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<EvaluationStudentArchive> wrapper = QueryBuilder.lambda(EvaluationStudentArchive.class)
             .eq(EvaluationStudentArchive::getTenantId, tenantId);
@@ -158,8 +160,8 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
 
     @Override
     public StudentAbilityArchiveDto createArchive(CreateStudentArchiveRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getUserId() == null || req.getUserId().isEmpty() || req.getMaterialName() == null
             || req.getMaterialName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -179,8 +181,8 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
 
     @Override
     public String deleteArchive(String id) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         int rows = archiveMapper.delete(QueryBuilder.lambda(EvaluationStudentArchive.class)
             .eq(EvaluationStudentArchive::getId, id)
             .eq(EvaluationStudentArchive::getTenantId, tenantId).build());
@@ -192,8 +194,8 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
 
     @Override
     public StudentDashboardDto studentDashboard(String userId) {
-        String tenantId = requireTenant();
-        String currentUser = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String currentUser = systemGuard.requireUser();
         String effectiveUserId = userId;
         // 学生仅可查看本人数据
         if (isStudent()) {
@@ -326,29 +328,6 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

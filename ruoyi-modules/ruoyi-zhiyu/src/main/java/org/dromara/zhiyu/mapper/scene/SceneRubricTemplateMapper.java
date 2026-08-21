@@ -4,7 +4,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.scene.SceneRubricTemplate;
 
 import java.util.List;
@@ -24,7 +24,7 @@ public interface SceneRubricTemplateMapper extends BaseMapperPlus<SceneRubricTem
      */
     @Insert("INSERT INTO rubric_templates (id, tenant_id, name, mode, types, description, data, created_at, updated_at)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{mode},"
-        + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{description},"
+        + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, #{description},"
         + " CAST(#{data} AS JSON), NOW(), NOW())")
     int insertTemplate(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                        @Param("mode") String mode, @Param("types") List<String> types,
@@ -34,7 +34,7 @@ public interface SceneRubricTemplateMapper extends BaseMapperPlus<SceneRubricTem
      * 更新评分模板（对齐 Go TaskEvaluationStore.UpdateRubricTemplate）。
      */
     @Update("UPDATE rubric_templates SET name = #{name}, mode = #{mode},"
-        + " types = #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " types = #{types, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " description = #{description}, data = CAST(#{data} AS JSON), updated_at = NOW() WHERE id = #{id}")
     int updateTemplate(@Param("id") String id, @Param("name") String name, @Param("mode") String mode,
                        @Param("types") List<String> types, @Param("description") String description,

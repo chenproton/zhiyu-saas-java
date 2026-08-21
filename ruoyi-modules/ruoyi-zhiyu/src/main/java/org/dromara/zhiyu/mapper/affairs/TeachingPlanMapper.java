@@ -111,7 +111,7 @@ public interface TeachingPlanMapper extends BaseMapperPlus<TeachingPlan, Teachin
 
     /** 更新共建人数组。 */
     @Update("""
-        UPDATE teaching_plans SET collaborators = #{collaborators, typeHandler = org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, updated_at = NOW()
+        UPDATE teaching_plans SET collaborators = #{collaborators, typeHandler = org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, updated_at = NOW()
         WHERE id = #{id} AND tenant_id = #{tenantId}
         """)
     int updateCollaborators(@Param("id") String id, @Param("tenantId") String tenantId,

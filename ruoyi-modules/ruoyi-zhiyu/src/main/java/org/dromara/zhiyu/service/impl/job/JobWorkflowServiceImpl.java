@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -12,6 +13,7 @@ import org.dromara.zhiyu.domain.dto.job.JobDtos.WorkflowDto;
 import org.dromara.zhiyu.domain.dto.job.JobDtos.WorkflowRequest;
 import org.dromara.zhiyu.domain.job.JobWorkflow;
 import org.dromara.zhiyu.mapper.job.JobWorkflowMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobWorkflowService;
 import org.springframework.stereotype.Service;
 
@@ -37,13 +39,14 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
     private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final JobWorkflowMapper workflowMapper;
 
     @Override
     public ListResponse<WorkflowDto> list(String ids, String search, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobWorkflow> wrapper = QueryBuilder.lambda(JobWorkflow.class)
             .eq(JobWorkflow::getTenantId, tenantId);
@@ -71,8 +74,8 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
 
     @Override
     public WorkflowDto get(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobWorkflow wf = workflowMapper.selectWorkflowById(id, tenantId);
         if (wf == null) {
             throw new ApiException(404, "not_found", "审批流程不存在");
@@ -83,16 +86,16 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
     @Override
     public WorkflowDto create(WorkflowRequest req) {
         // 审批流程必须绑定学校（方案 B：不支持全局流程）；无租户直接拒绝
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         JobWorkflow wf = new JobWorkflow();
         wf.setTenantId(tenantId);
         wf.setName(req.getName());
-        wf.setScene(blankToNull(req.getScene()));
-        wf.setDescription(blankToNull(req.getDescription()));
+        wf.setScene(ZhiyuStringUtils.blankToNull(req.getScene()));
+        wf.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         wf.setSteps(toJson(req.getSteps()));
         wf.setMajorIds(toJsonStrings(req.getMajorIds()));
         wf.setUsageCount(0);
@@ -104,8 +107,8 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
 
     @Override
     public WorkflowDto update(String id, WorkflowRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobWorkflow existing = workflowMapper.selectWorkflowById(id, tenantId);
         if (existing == null) {
             throw new ApiException(404, "not_found", "审批流程不存在");
@@ -123,7 +126,7 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
         String name = req.getName();
         String description = req.getDescription() != null ? req.getDescription() : existing.getDescription();
         String scene = req.getScene() != null ? req.getScene() : existing.getScene();
-        workflowMapper.updateWorkflow(id, tenantId, name, blankToNull(scene), blankToNull(description),
+        workflowMapper.updateWorkflow(id, tenantId, name, ZhiyuStringUtils.blankToNull(scene), ZhiyuStringUtils.blankToNull(description),
             steps, majorIds, status);
         JobWorkflow saved = workflowMapper.selectWorkflowById(id, tenantId);
         return toDto(saved);
@@ -131,8 +134,8 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobWorkflow existing = workflowMapper.selectWorkflowById(id, tenantId);
         if (existing == null) {
             throw new ApiException(404, "not_found", "审批流程不存在");
@@ -207,30 +210,4 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
         }
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
-    }
 }

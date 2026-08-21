@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -39,11 +39,11 @@ public class SceneScenario extends BaseZhiyuEntity {
     private String careerPositionId;
 
     /** 关联行业 ID 数组（varchar[]） */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> industryIds;
 
     /** 关联专业 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> professionIds;
 
     /** 批次 ID */
@@ -68,7 +68,7 @@ public class SceneScenario extends BaseZhiyuEntity {
     private String creatorId;
 
     /** 共建人 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> coBuilderIds;
 
     /** 租户 ID */

@@ -46,10 +46,10 @@ public interface PartnerScenarioMapper extends BaseMapperPlus<SceneScenario, Sce
         + " batch_id, difficulty, version, status, background, delivery_goal, creator_id, co_builder_ids, tenant_id,"
         + " source_type, source_enterprise_id, source_resource_id)"
         + " VALUES (#{id}, #{name}, #{code}, #{coverImage}, #{careerPositionId},"
-        + " #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{batchId}, #{difficulty}, #{version}, #{status}, #{background}, #{deliveryGoal}, #{creatorId},"
-        + " #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{tenantId}, #{sourceType}, #{sourceEnterpriseId}, #{sourceResourceId})")
     int insertCoBuildScenario(@Param("id") String id, @Param("name") String name, @Param("code") String code,
                               @Param("coverImage") String coverImage, @Param("careerPositionId") String careerPositionId,
@@ -64,11 +64,11 @@ public interface PartnerScenarioMapper extends BaseMapperPlus<SceneScenario, Sce
                               @Param("sourceResourceId") String sourceResourceId);
 
     @Update("UPDATE scenarios SET name = #{name}, cover_image = #{coverImage}, career_position_id = #{careerPositionId},"
-        + " industry_ids = #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " profession_ids = #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " industry_ids = #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " profession_ids = #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " batch_id = #{batchId}, difficulty = #{difficulty}, version = #{version}, background = #{background},"
         + " delivery_goal = #{deliveryGoal},"
-        + " co_builder_ids = #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " co_builder_ids = #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id}")
     int updateCoBuildScenario(@Param("id") String id, @Param("name") String name, @Param("coverImage") String coverImage,
                               @Param("careerPositionId") String careerPositionId,

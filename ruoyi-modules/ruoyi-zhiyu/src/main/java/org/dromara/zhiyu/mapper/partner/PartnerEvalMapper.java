@@ -61,10 +61,10 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
     @Insert("INSERT INTO task_eval_points (tenant_id, config_id, name, description, sub_type, types, weight,"
         + " scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)"
         + " VALUES (#{tenantId}, #{configId}, #{name}, #{description}, #{subType},"
-        + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{weight},"
+        + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, #{weight},"
         + " #{scoringMethod}, CAST(#{gradeMapping} AS JSON),"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{sortOrder})")
     int insertEvalPoint(@Param("tenantId") String tenantId, @Param("configId") String configId,
                         @Param("name") String name, @Param("description") String description,
@@ -84,7 +84,7 @@ public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, Scene
     @Insert("INSERT INTO task_review_steps (tenant_id, config_id, label, description, enabled, subject_type, weight,"
         + " sort_order, assigned_user_ids)"
         + " VALUES (#{tenantId}, #{configId}, #{label}, #{description}, #{enabled}, #{subjectType}, #{weight},"
-        + " #{sortOrder}, #{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler})")
+        + " #{sortOrder}, #{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler})")
     int insertReviewStep(@Param("tenantId") String tenantId, @Param("configId") String configId,
                          @Param("label") String label, @Param("description") String description,
                          @Param("enabled") Boolean enabled, @Param("subjectType") String subjectType,

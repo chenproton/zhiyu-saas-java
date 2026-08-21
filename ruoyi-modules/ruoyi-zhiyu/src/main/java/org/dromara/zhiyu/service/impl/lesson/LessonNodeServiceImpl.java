@@ -20,6 +20,7 @@ import org.dromara.zhiyu.mapper.lesson.KnowledgePointMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonResourceMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonNodeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,7 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final SystemCourseNodeMapper nodeMapper;
     private final KnowledgePointMapper knowledgePointMapper;
     private final LessonResourceMapper resourceMapper;
@@ -52,7 +54,7 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
 
     @Override
     public ListResponse<SystemCourseNodeDto> list(String courseId, String parentId, String rootOnly) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         LambdaQueryBuilder<SystemCourseNode> wrapper = QueryBuilder.lambda(SystemCourseNode.class)
             .eq(SystemCourseNode::getTenantId, tenantId);
         if (courseId != null && !courseId.isEmpty()) {
@@ -71,15 +73,15 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
 
     @Override
     public SystemCourseNodeDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         return enrich(List.of(fetchOwned(id))).get(0);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SystemCourseNodeDto create(CreateNodeRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCourseId() == null || req.getCourseId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -108,7 +110,7 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SystemCourseNodeDto update(String id, CreateNodeRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         SystemCourseNode existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
         if (req.getName() == null || req.getName().isEmpty()) {
@@ -154,7 +156,7 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
 
     @Override
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         SystemCourseNode existing = fetchOwned(id);
         if (nodeMapper.existsEvaluationResults(id)) {
             throw new ApiException(409, "conflict", "该节点已存在测评成绩，无法删除");
@@ -166,8 +168,8 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean reorder(ReorderNodesRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCourseId() == null || req.getCourseId().isEmpty()
             || req.getNodeIds() == null || req.getNodeIds().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -374,22 +376,6 @@ public class LessonNodeServiceImpl implements ILessonNodeService {
         if (entityTenantId != null && !entityTenantId.equals(tenantId)) {
             throw new ApiException(403, "forbidden", "无权操作：资源不属于您的租户");
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
     }
 
     private String emptyToNull(String s) {

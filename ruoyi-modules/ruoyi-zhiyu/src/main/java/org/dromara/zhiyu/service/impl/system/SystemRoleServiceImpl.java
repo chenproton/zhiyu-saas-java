@@ -33,7 +33,7 @@ public class SystemRoleServiceImpl implements ISystemRoleService {
     @Override
     public ListResponse<SystemRole> list(String search, String status, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemRole> wrapper = QueryBuilder.lambda(SystemRole.class)
             .eq(SystemRole::getTenantId, tenantId);
         if (status != null && !status.isBlank()) {
@@ -122,10 +122,4 @@ public class SystemRoleServiceImpl implements ISystemRoleService {
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

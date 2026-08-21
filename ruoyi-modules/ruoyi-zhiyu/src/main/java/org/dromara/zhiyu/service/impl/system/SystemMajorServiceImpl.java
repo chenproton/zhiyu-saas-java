@@ -30,7 +30,7 @@ public class SystemMajorServiceImpl implements ISystemMajorService {
     @Override
     public ListResponse<SystemMajor> list(String search, String enabled, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemMajor> wrapper = QueryBuilder.lambda(SystemMajor.class)
             .eq(SystemMajor::getTenantId, tenantId);
         if (enabled != null && !enabled.isBlank()) {
@@ -102,10 +102,4 @@ public class SystemMajorServiceImpl implements ISystemMajorService {
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

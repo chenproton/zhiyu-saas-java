@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.ZhiyuUser;
@@ -305,9 +306,9 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 ev.setType(eventType);
                 ev.setDayOfWeek(se.getDayOfWeek());
                 ev.setPeriod(period);
-                ev.setLocation(blankToNull(se.getVenueName()));
-                ev.setClassName(blankToNull(joinClassNames(se)));
-                ev.setTeacher(blankToNull(se.getTeacherName()));
+                ev.setLocation(ZhiyuStringUtils.blankToNull(se.getVenueName()));
+                ev.setClassName(ZhiyuStringUtils.blankToNull(joinClassNames(se)));
+                ev.setTeacher(ZhiyuStringUtils.blankToNull(se.getTeacherName()));
                 ev.setStatus("进行中");
                 ev.setScenarioId(se.getScenarioId());
                 ev.setCourseId(se.getCourseId());
@@ -329,8 +330,8 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
                 ev.setType(eventType);
                 ev.setDayOfWeek(se.getDayOfWeek());
                 ev.setPeriod(period);
-                ev.setLocation(blankToNull(se.getVenueName()));
-                ev.setTeacher(blankToNull(se.getTeacherName()));
+                ev.setLocation(ZhiyuStringUtils.blankToNull(se.getVenueName()));
+                ev.setTeacher(ZhiyuStringUtils.blankToNull(se.getTeacherName()));
                 ev.setStatus("进行中");
                 ev.setScenarioId(se.getScenarioId());
                 ev.setCourseId(se.getCourseId());
@@ -1361,21 +1362,21 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
             dto.setCourseId(se.getCourseId());
             dto.setType(se.getType());
             dto.setClassNodeId(se.getClassNodeId());
-            dto.setClassName(blankToNull(se.getClassNodeId() == null ? null : orgMap.get(se.getClassNodeId())));
+            dto.setClassName(ZhiyuStringUtils.blankToNull(se.getClassNodeId() == null ? null : orgMap.get(se.getClassNodeId())));
             dto.setClassNodeIds(se.getClassNodeIds());
             dto.setClassNames(se.getClassNodeIds() == null ? null
                 : se.getClassNodeIds().stream().map(orgMap::get).filter(java.util.Objects::nonNull).toList());
             dto.setTeacherId(se.getTeacherId());
-            dto.setTeacherName(blankToNull(se.getTeacherId() == null ? null : teacherMap.getOrDefault(se.getTeacherId(), "")));
+            dto.setTeacherName(ZhiyuStringUtils.blankToNull(se.getTeacherId() == null ? null : teacherMap.getOrDefault(se.getTeacherId(), "")));
             dto.setDayOfWeek(se.getDayOfWeek());
             dto.setPeriods(se.getPeriods());
             dto.setStartWeek(se.getStartWeek());
             dto.setEndWeek(se.getEndWeek());
             dto.setWeekPattern(se.getWeekPattern());
             dto.setVenueId(se.getVenueId());
-            dto.setVenueName(blankToNull(se.getVenueId() == null ? null : venueMap.getOrDefault(se.getVenueId(), "")));
+            dto.setVenueName(ZhiyuStringUtils.blankToNull(se.getVenueId() == null ? null : venueMap.getOrDefault(se.getVenueId(), "")));
             dto.setScenarioId(se.getScenarioId());
-            dto.setScenarioName(blankToNull(se.getScenarioId() == null ? null : scenarioMap.getOrDefault(se.getScenarioId(), "")));
+            dto.setScenarioName(ZhiyuStringUtils.blankToNull(se.getScenarioId() == null ? null : scenarioMap.getOrDefault(se.getScenarioId(), "")));
             dto.setSource(se.getSource() == null ? "" : se.getSource());
             dto.setStatus(se.getStatus());
             dto.setVersion(se.getVersion());
@@ -1611,10 +1612,6 @@ public class WorkspaceServiceImpl implements IWorkspaceService {
 
     private int nz(Integer v) {
         return v == null ? 0 : v;
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 
     private int safeCompare(String a, String b) {

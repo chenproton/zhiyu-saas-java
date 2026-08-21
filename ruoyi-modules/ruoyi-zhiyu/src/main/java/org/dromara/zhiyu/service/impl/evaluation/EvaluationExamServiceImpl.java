@@ -42,6 +42,7 @@ import org.dromara.zhiyu.mapper.evaluation.EvaluationExamUsageMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationQuestionMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationSceneResultMapper;
 import org.dromara.zhiyu.mapper.evaluation.EvaluationSnapshotMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.evaluation.IEvaluationExamService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,6 +95,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     /** 手动创建的考试安排目标类型（对齐 Go isManualTargetType） */
     private static final Set<String> MANUAL_TARGET_TYPES = Set.of("class", "major", "department", "public");
 
+    private final SystemGuard systemGuard;
     private final EvaluationExamMapper examMapper;
     private final EvaluationExamQuestionMapper examQuestionMapper;
     private final EvaluationExamUsageMapper examUsageMapper;
@@ -107,8 +109,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ListResponse<ExamDto> listExams(String search, String status, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         boolean student = isStudent();
         String effectiveStatus = status;
@@ -136,7 +138,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto getExam(String id) {
-        requireUser();
+        systemGuard.requireUser();
         PortalExam exam = fetchExam(id);
         // 学生作答由服务端判分，不返回答案与解析；且仅可读已发布试卷（决策 7）
         boolean student = isStudent();
@@ -155,8 +157,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto createExam(CreateExamRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -173,9 +175,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto updateExam(String id, CreateExamRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         PortalExam existing = fetchExam(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String name = req.getName() == null || req.getName().isEmpty() ? existing.getName() : req.getName();
         String description = req.getDescription() != null ? (req.getDescription().isEmpty() ? null : req.getDescription())
             : existing.getDescription();
@@ -194,9 +196,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteExam(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchExam(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (examMapper.examHasResults(id)) {
             throw new ApiException(409, "conflict", "该试卷已存在考试结果，无法删除");
         }
@@ -217,7 +219,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto reviewExam(String id, ReviewRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         String toStatus;
         if ("approved".equals(req.getStatus())) {
             toStatus = "approved";
@@ -227,7 +229,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
         fetchExam(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         int rows = examMapper.casTransition(id, tenantId, "pending", toStatus);
         if (rows == 0) {
             throw new ApiException(400, "bad_request", "考试不存在或不在待处理状态");
@@ -262,12 +264,12 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamDto inviteExam(String id, InviteRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchExam(id);
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!userInTenant(req.getUserId(), tenantId)) {
             throw new ApiException(400, "bad_request", "用户不存在或不属于本租户");
         }
@@ -277,9 +279,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Transactional(rollbackFor = Exception.class)
     protected ExamDto transition(String id, String toStatus) {
-        requireUser();
+        systemGuard.requireUser();
         PortalExam exam = fetchExam(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String currentStatus = exam.getStatus();
         Set<String> allowed = ALLOWED_TRANSITIONS.get(currentStatus);
         if (allowed == null || !allowed.contains(toStatus)) {
@@ -305,9 +307,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExamDto addExamQuestion(String id, String questionId, BigDecimal score) {
-        requireUser();
+        systemGuard.requireUser();
         PortalExam exam = fetchExam(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (questionId == null || questionId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少题目ID");
         }
@@ -326,9 +328,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExamDto removeExamQuestion(String id, String questionId) {
-        requireUser();
+        systemGuard.requireUser();
         fetchExam(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         examQuestionMapper.delete(QueryBuilder.lambda(EvaluationExamQuestion.class)
             .eq(EvaluationExamQuestion::getExamId, id)
             .eq(EvaluationExamQuestion::getQuestionId, questionId)
@@ -340,9 +342,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExamDto updateExamQuestionScore(String examId, String questionId, UpdateExamQuestionScoreRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchExam(examId);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getScore() == null || req.getScore().signum() <= 0) {
             throw new ApiException(400, "bad_request", "分数必须为正数");
         }
@@ -357,9 +359,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExamDto bulkUpdateExamScores(String examId, Map<String, BigDecimal> scores) {
-        requireUser();
+        systemGuard.requireUser();
         fetchExam(examId);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (scores == null || scores.isEmpty()) {
             throw new ApiException(400, "bad_request", "分数映射不能为空");
         }
@@ -386,8 +388,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public Map<String, Object> examSnapshot(String id, String version) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         Map<String, Object> bundle = getExamBundle(tenantId, id, version);
         if (bundle == null) {
             throw new ApiException(404, "not_found", "资源不存在或未发布");
@@ -403,8 +405,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     public ListResponse<ExamUsageDto> listExamUsages(String search, String examId, String status, String scope,
                                                      long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         // 读路径定时启停懒更新（对齐 Go SyncScheduledExamUsageStatus）
         try {
@@ -438,14 +440,14 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamUsageDto getExamUsage(String id) {
-        requireUser();
+        systemGuard.requireUser();
         return toExamUsageDto(fetchExamUsage(id));
     }
 
     @Override
     public ExamUsageDto createExamUsage(ExamUsageRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getExamId() == null || req.getExamId().isEmpty() || req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -469,9 +471,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamUsageDto updateExamUsage(String id, ExamUsageRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchExamUsage(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         // 自动创建的考试安排不允许编辑（对齐 Go manualOnly）
         EvaluationExamUsage usage = fetchExamUsage(id);
         if (usage.getTargetType() == null || !MANUAL_TARGET_TYPES.contains(usage.getTargetType())) {
@@ -490,9 +492,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public String deleteExamUsage(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationExamUsage usage = fetchExamUsage(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (usage.getTargetType() == null || !MANUAL_TARGET_TYPES.contains(usage.getTargetType())) {
             throw new ApiException(403, "forbidden", "自动创建的考试安排不允许编辑/删除");
         }
@@ -508,9 +510,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamUsageDto publishExamUsage(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationExamUsage usage = fetchExamUsage(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!"draft".equals(usage.getStatus()) && !"pending".equals(usage.getStatus())) {
             throw new ApiException(400, "bad_request", "考试安排不在草稿状态");
         }
@@ -520,9 +522,9 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamUsageDto finishExamUsage(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationExamUsage usage = fetchExamUsage(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!"published".equals(usage.getStatus()) && !"in_progress".equals(usage.getStatus())) {
             throw new ApiException(400, "bad_request", "考试安排不在已发布状态");
         }
@@ -532,8 +534,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public List<ExamCenterItemDto> examCenter() {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         boolean student = isStudent();
         String classNodeId = "";
         if (student) {
@@ -574,19 +576,19 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ListResponse<ExamResultDto> listExamResults(String usageId, long limit, long offset) {
-        requireUser();
+        systemGuard.requireUser();
         if (usageId == null || usageId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少使用记录ID");
         }
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<EvaluationExamResult> wrapper = QueryBuilder.lambda(EvaluationExamResult.class)
             .eq(EvaluationExamResult::getTenantId, tenantId)
             .eq(EvaluationExamResult::getExamUsageId, usageId);
         // 学生仅可查看本人考试结果
         if (isStudent()) {
-            wrapper.eq(EvaluationExamResult::getUserId, requireUser());
+            wrapper.eq(EvaluationExamResult::getUserId, systemGuard.requireUser());
         }
         long total = examResultMapper.selectCount(wrapper.build());
         wrapper.orderByDesc(EvaluationExamResult::getScore)
@@ -598,18 +600,18 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public ExamResultDto getExamResult(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationExamResult result = examResultMapper.selectOne(QueryBuilder.lambda(EvaluationExamResult.class)
             .eq(EvaluationExamResult::getId, id).build());
         if (result == null) {
             throw new ApiException(404, "not_found", "考试结果不存在");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (result.getTenantId() == null || !result.getTenantId().equals(tenantId)) {
             throw new ApiException(404, "not_found", "考试结果不存在");
         }
         // 学生仅可查看本人考试结果
-        if (isStudent() && !requireUser().equals(result.getUserId())) {
+        if (isStudent() && !systemGuard.requireUser().equals(result.getUserId())) {
             throw new ApiException(404, "not_found", "考试结果不存在");
         }
         return toExamResultDto(result);
@@ -618,8 +620,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExamResultDto submitExamResult(SubmitExamResultRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getExamUsageId() == null || req.getExamUsageId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少考试使用记录ID");
         }
@@ -711,7 +713,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExamResultDto gradeExamResult(String id, GradeExamResultRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationExamResult result = examResultMapper.selectOne(QueryBuilder.lambda(EvaluationExamResult.class)
             .eq(EvaluationExamResult::getId, id).build());
         if (result == null || result.getTenantId() == null) {
@@ -756,7 +758,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         }
         BigDecimal score = roundScore(objective.add(subjective));
         boolean isPass = score.compareTo(grading.totalScore.multiply(new BigDecimal("0.6"))) >= 0;
-        int rows = examResultMapper.grade(id, tenantId, requireUser(), score, isPass,
+        int rows = examResultMapper.grade(id, tenantId, systemGuard.requireUser(), score, isPass,
             toJson(req.getScores() == null ? Map.of() : req.getScores()), emptyToNull(req.getComment()));
         if (rows == 0) {
             throw new ApiException(404, "not_found", "考试结果不存在");
@@ -770,16 +772,16 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     public ListResponse<SceneEvaluationResultDto> listResults(String taskId, String sceneId, String evaluateeId,
                                                               String methodKey, String status, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         boolean student = isStudent();
         LambdaQueryBuilder<EvaluationSceneResult> wrapper = QueryBuilder.lambda(EvaluationSceneResult.class)
             .eq(EvaluationSceneResult::getTenantId, tenantId);
         if (student) {
             // 学生仅可查看本人的评价结果
-            wrapper.eq(EvaluationSceneResult::getEvaluateeId, requireUser());
+            wrapper.eq(EvaluationSceneResult::getEvaluateeId, systemGuard.requireUser());
             if (taskId != null && !taskId.isBlank()) {
                 wrapper.eq(EvaluationSceneResult::getTaskId, taskId);
             }
@@ -812,18 +814,18 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public SceneEvaluationResultDto getResult(String id) {
-        requireUser();
+        systemGuard.requireUser();
         EvaluationSceneResult res = sceneResultMapper.selectOne(QueryBuilder.lambda(EvaluationSceneResult.class)
             .eq(EvaluationSceneResult::getId, id).build());
         if (res == null || res.getTenantId() == null) {
             throw new ApiException(404, "not_found", "评价结果不存在");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!res.getTenantId().equals(tenantId)) {
             throw new ApiException(404, "not_found", "评价结果不存在");
         }
         // 学生仅可查看本人的评价结果
-        if (isStudent() && !requireUser().equals(res.getEvaluateeId())) {
+        if (isStudent() && !systemGuard.requireUser().equals(res.getEvaluateeId())) {
             throw new ApiException(404, "not_found", "评价结果不存在");
         }
         return toSceneResultDto(res);
@@ -831,8 +833,8 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
 
     @Override
     public SceneEvaluationResultDto submitResult(SubmitResultRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getTaskId() == null || req.getTaskId().isEmpty() || req.getMethodKey() == null || req.getMethodKey().isEmpty()
             || req.getEvaluateeId() == null || req.getEvaluateeId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段（taskId、methodKey、evaluateeId）");
@@ -889,7 +891,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SceneEvaluationResultDto gradeResult(String id, GradeResultRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         if (isStudent()) {
             throw new ApiException(403, "forbidden", "权限不足");
         }
@@ -898,11 +900,11 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         if (res == null || res.getTenantId() == null) {
             throw new ApiException(404, "not_found", "评价结果不存在");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!res.getTenantId().equals(tenantId)) {
             throw new ApiException(404, "not_found", "评价结果不存在");
         }
-        int rows = sceneResultMapper.grade(id, tenantId, requireUser(), req.getScore(),
+        int rows = sceneResultMapper.grade(id, tenantId, systemGuard.requireUser(), req.getScore(),
             emptyToNull(req.getComment()),
             toJson(req.getEvalPointScores() == null ? Map.of() : req.getEvalPointScores()),
             toJson(req.getDrawnQuestions() == null ? Map.of() : req.getDrawnQuestions()),
@@ -919,7 +921,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int batchGradeResults(BatchGradeRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         if (isStudent()) {
             throw new ApiException(403, "forbidden", "权限不足");
         }
@@ -929,7 +931,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         if (req.getItems().size() > 200) {
             throw new ApiException(400, "bad_request", "单次最多评分 200 项");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         // 批量查一次（替代逐条查询的 N+1），租户限定
         List<String> ids = req.getItems().stream().map(BatchGradeItem::getId).toList();
         List<EvaluationSceneResult> existing = sceneResultMapper.selectList(QueryBuilder.lambda(EvaluationSceneResult.class)
@@ -941,7 +943,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
             if (res == null) {
                 throw new ApiException(404, "not_found", "评价结果不存在");
             }
-            int rows = sceneResultMapper.grade(item.getId(), tenantId, requireUser(), item.getScore(),
+            int rows = sceneResultMapper.grade(item.getId(), tenantId, systemGuard.requireUser(), item.getScore(),
                 emptyToNull(item.getComment()),
                 toJson(item.getEvalPointScores() == null ? Map.of() : item.getEvalPointScores()),
                 "{}", "{}");
@@ -1494,7 +1496,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     // ==================== 内部 ====================
 
     private PortalExam fetchExam(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PortalExam exam = examMapper.selectOne(QueryBuilder.lambda(PortalExam.class)
             .eq(PortalExam::getId, id).eq(PortalExam::getTenantId, tenantId).build());
         if (exam == null) {
@@ -1504,7 +1506,7 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     }
 
     private EvaluationExamUsage fetchExamUsage(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         EvaluationExamUsage usage = examUsageMapper.selectOne(QueryBuilder.lambda(EvaluationExamUsage.class)
             .eq(EvaluationExamUsage::getId, id).eq(EvaluationExamUsage::getTenantId, tenantId).build());
         if (usage == null) {
@@ -1710,29 +1712,6 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

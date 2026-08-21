@@ -43,8 +43,8 @@ public interface SystemCourseNodeMapper extends BaseMapperPlus<SystemCourseNode,
         + " VALUES (#{id}, #{tenantId}, #{courseId}, #{parentId}, #{name}, #{code}, #{sortOrder},"
         + " #{refType}, #{sourceId}, #{sourceName}, #{teachingGoals}, #{detailedDescription}, #{descriptionPdf},"
         + " #{background}, #{estimatedHours}, #{duration}, #{difficulty},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " CAST(#{evalData} AS JSON), #{status})")
     int insertNode(@Param("id") String id, @Param("tenantId") String tenantId, @Param("courseId") String courseId,
                    @Param("parentId") String parentId, @Param("name") String name, @Param("code") String code,
@@ -63,8 +63,8 @@ public interface SystemCourseNodeMapper extends BaseMapperPlus<SystemCourseNode,
         + " teaching_goals = #{teachingGoals}, detailed_description = #{detailedDescription},"
         + " description_pdf = #{descriptionPdf}, background = #{background}, estimated_hours = #{estimatedHours},"
         + " duration = #{duration}, difficulty = #{difficulty},"
-        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " resource_ids = #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " eval_data = CAST(#{evalData} AS JSON), status = #{status}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateNode(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
@@ -112,18 +112,18 @@ public interface SystemCourseNodeMapper extends BaseMapperPlus<SystemCourseNode,
 
     /** 批量查询知识点（enrich 用）。 */
     @Select("SELECT kp.id, kp.name, kp.code, kp.description, kp.linked FROM knowledge_points kp"
-        + " WHERE JSON_CONTAINS(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(kp.id), '$')")
+        + " WHERE JSON_CONTAINS(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(kp.id), '$')")
     List<NodeKnowledgePointDto> selectKnowledgePointsByIds(@Param("ids") List<String> ids);
 
     /** 批量查询资源（enrich 用）。 */
     @Select("SELECT rl.id, rl.name, rl.resource_type AS type, COALESCE(rl.url, '') AS url,"
         + " COALESCE(rl.file_size, 0) AS size FROM resource_library rl"
-        + " WHERE JSON_CONTAINS(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(rl.id), '$')")
+        + " WHERE JSON_CONTAINS(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(rl.id), '$')")
     List<NodeEnrichResourceDto> selectResourcesByIds(@Param("ids") List<String> ids);
 
     /** 批量查询节点测验（enrich 用）。 */
     @Select("SELECT id, node_id, title, type, time_limit FROM node_quizzes"
-        + " WHERE JSON_CONTAINS(CAST(#{nodeIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(node_id), '$')"
+        + " WHERE JSON_CONTAINS(CAST(#{nodeIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(node_id), '$')"
         + " ORDER BY id ASC")
     List<NodeQuizDto> selectQuizzesByNodeIds(@Param("nodeIds") List<String> nodeIds);
 
@@ -152,7 +152,7 @@ public interface SystemCourseNodeMapper extends BaseMapperPlus<SystemCourseNode,
     /** 查询 original 节点来源颗粒课的知识点（course 绑定）。 */
     @Select("SELECT ckb.course_id, kp.id, kp.name, kp.code, kp.description, TRUE AS linked"
         + " FROM course_knowledge_bindings ckb JOIN knowledge_points kp ON kp.id = ckb.knowledge_point_id"
-        + " WHERE JSON_CONTAINS(CAST(#{courseIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(ckb.course_id), '$')"
+        + " WHERE JSON_CONTAINS(CAST(#{courseIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(ckb.course_id), '$')"
         + " AND ckb.bind_type = 'course'")
     List<OriginalKpRow> selectOriginalSourceKnowledgePoints(@Param("courseIds") List<String> courseIds);
 
@@ -160,7 +160,7 @@ public interface SystemCourseNodeMapper extends BaseMapperPlus<SystemCourseNode,
     @Select("SELECT crb.course_id, rl.id, rl.name, rl.resource_type AS type, COALESCE(rl.url, '') AS url,"
         + " COALESCE(rl.file_size, 0) AS size"
         + " FROM course_resource_bindings crb JOIN resource_library rl ON rl.id = crb.resource_id"
-        + " WHERE JSON_CONTAINS(CAST(#{courseIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(crb.course_id), '$')")
+        + " WHERE JSON_CONTAINS(CAST(#{courseIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(crb.course_id), '$')")
     List<OriginalResRow> selectOriginalSourceResources(@Param("courseIds") List<String> courseIds);
 
     /** 课程节点数行（列表组装 node_count 用）。 */

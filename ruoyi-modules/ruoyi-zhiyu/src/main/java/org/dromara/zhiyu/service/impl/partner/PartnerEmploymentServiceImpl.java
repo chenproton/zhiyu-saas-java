@@ -16,6 +16,7 @@ import org.dromara.zhiyu.domain.partner.PartnerEnterprise;
 import org.dromara.zhiyu.mapper.partner.PartnerEmploymentMapper;
 import org.dromara.zhiyu.mapper.partner.PartnerEnterpriseLinkMapper;
 import org.dromara.zhiyu.mapper.partner.PartnerEnterpriseMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.partner.IPartnerEmploymentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 @Service
 public class PartnerEmploymentServiceImpl implements IPartnerEmploymentService {
 
+    private final SystemGuard systemGuard;
     private final PartnerEmploymentMapper employmentMapper;
     private final PartnerEnterpriseMapper enterpriseMapper;
     private final PartnerEnterpriseLinkMapper linkMapper;
@@ -94,7 +96,7 @@ public class PartnerEmploymentServiceImpl implements IPartnerEmploymentService {
     @Override
     public PartnerEmploymentJob createJob(JobRequest req) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         if (req.getTitle() == null || req.getTitle().isEmpty()) {
             throw new ApiException(400, "bad_request", "岗位名称不能为空");
         }
@@ -199,7 +201,7 @@ public class PartnerEmploymentServiceImpl implements IPartnerEmploymentService {
     // ===== 工具 =====
 
     private String resolveEnterpriseId() {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PartnerEnterprise enterprise = enterpriseMapper.selectList(
             QueryBuilder.lambda(PartnerEnterprise.class).eq(PartnerEnterprise::getTenantId, tenantId).build())
             .stream().findFirst().orElse(null);
@@ -248,19 +250,4 @@ public class PartnerEmploymentServiceImpl implements IPartnerEmploymentService {
             PartnerEmploymentMapper.IdNameRow::getName, (a, b) -> a));
     }
 
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
 }

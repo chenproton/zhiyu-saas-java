@@ -16,6 +16,7 @@ import org.dromara.zhiyu.domain.lesson.LessonNodeQuizQuestion;
 import org.dromara.zhiyu.mapper.lesson.LessonNodeQuizMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonNodeQuizQuestionMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonQuizService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,14 +39,15 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final LessonNodeQuizMapper quizMapper;
     private final LessonNodeQuizQuestionMapper questionMapper;
     private final SystemCourseNodeMapper nodeMapper;
 
     @Override
     public ListResponse<NodeQuizDto> listQuizzes(String nodeId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         List<LessonNodeQuiz> rows = quizMapper.selectQuizzes(tenantId, nodeId);
         List<NodeQuizDto> items = rows.stream().map(this::toQuizDto).toList();
         return ListResponse.of(items, items.size());
@@ -53,8 +55,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
 
     @Override
     public NodeQuizDto createQuiz(CreateQuizRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getNodeId()) || isBlank(req.getTitle()) || isBlank(req.getType())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -66,8 +68,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
 
     @Override
     public NodeQuizDto updateQuiz(String id, UpdateQuizRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getTitle()) || isBlank(req.getType())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -81,8 +83,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteQuiz(String id) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (quizMapper.selectQuiz(id, tenantId) == null) {
             throw new ApiException(404, "not_found", "测验不存在");
         }
@@ -93,12 +95,12 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
 
     @Override
     public ListResponse<NodeQuizQuestionDto> listQuestions(String quizId, long limit, long offset) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (quizMapper.selectQuiz(quizId, tenantId) == null) {
             throw new ApiException(404, "not_found", "测验不存在");
         }
-        int safeLimit = (int) clampLimit(limit, 500);
+        int safeLimit = (int) systemGuard.clampLimit(limit, 500, 1000);
         int safeOffset = (int) Math.max(offset, 0);
         long total = questionMapper.countQuestions(quizId, tenantId);
         List<LessonNodeQuizQuestion> rows = questionMapper.selectQuestions(quizId, tenantId, safeLimit, safeOffset);
@@ -108,8 +110,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
 
     @Override
     public NodeQuizQuestionDto addQuestion(String quizId, QuizQuestionRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getType()) || isBlank(req.getQuestion())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -124,8 +126,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
 
     @Override
     public NodeQuizQuestionDto updateQuestion(String questionId, QuizQuestionRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getType()) || isBlank(req.getQuestion())) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -139,8 +141,8 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
 
     @Override
     public String deleteQuestion(String questionId) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (questionMapper.selectQuestion(questionId, tenantId) == null) {
             throw new ApiException(404, "not_found", "题目不存在");
         }
@@ -202,26 +204,4 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
         return s == null || s.isBlank();
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 1000);
-    }
 }

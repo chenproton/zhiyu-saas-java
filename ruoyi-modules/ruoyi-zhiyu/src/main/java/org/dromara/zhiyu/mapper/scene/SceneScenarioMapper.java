@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.scene.SceneScenario;
 
 import java.time.OffsetDateTime;
@@ -15,7 +15,7 @@ import java.util.List;
 /**
  * 场景 Mapper（scenarios 表，Go→Java 迁移）。
  *
- * <p>读取走 MyBatis-Plus 内置方法（数组列经 {@link PgArrayTypeHandler} 映射）；
+ * <p>读取走 MyBatis-Plus 内置方法（数组列经 {@link JsonStringArrayTypeHandler} 映射）；
  * 写入走自定义 SQL——uuid[]/varchar[] 数组列需显式 CAST 才能写入 PG 数组列。</p>
  *
  * @author zhiyu
@@ -29,11 +29,11 @@ public interface SceneScenarioMapper extends BaseMapperPlus<SceneScenario, Scene
         + " profession_ids, batch_id, difficulty, version, status, background,"
         + " delivery_goal, creator_id, co_builder_ids, tenant_id, source_type, source_enterprise_id)"
         + " VALUES (#{id}, #{name}, #{code}, #{coverImage}, #{careerPositionId},"
-        + " #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{batchId}, #{difficulty}, #{version}, 'draft', #{background},"
         + " #{deliveryGoal}, #{creatorId},"
-        + " #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{tenantId}, COALESCE(#{sourceType}, 'school'), #{sourceEnterpriseId})")
     int insertScenario(@Param("id") String id, @Param("name") String name, @Param("code") String code,
                        @Param("coverImage") String coverImage, @Param("careerPositionId") String careerPositionId,
@@ -48,11 +48,11 @@ public interface SceneScenarioMapper extends BaseMapperPlus<SceneScenario, Scene
      * 更新场景全部业务字段（部分更新语义由 Service 先合并再调用，对齐 Go ScenarioStore.Update）。
      */
     @Update("UPDATE scenarios SET name = #{name}, cover_image = #{coverImage}, career_position_id = #{careerPositionId},"
-        + " industry_ids = #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " profession_ids = #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " industry_ids = #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " profession_ids = #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " batch_id = #{batchId}, difficulty = #{difficulty}, version = #{version},"
         + " background = #{background}, delivery_goal = #{deliveryGoal},"
-        + " co_builder_ids = #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " co_builder_ids = #{coBuilderIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id}")
     int updateScenario(@Param("id") String id, @Param("name") String name, @Param("coverImage") String coverImage,
                        @Param("careerPositionId") String careerPositionId, @Param("industryIds") List<String> industryIds,

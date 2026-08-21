@@ -14,6 +14,7 @@ import org.dromara.zhiyu.domain.affairs.Term;
 import org.dromara.zhiyu.mapper.affairs.AffairsScheduleMapper;
 import org.dromara.zhiyu.mapper.affairs.TeachingPlanMapper;
 import org.dromara.zhiyu.mapper.affairs.TermMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.affairs.ITermService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,13 +33,14 @@ import java.util.List;
 @Service
 public class TermServiceImpl implements ITermService {
 
+    private final SystemGuard systemGuard;
     private final TermMapper termMapper;
     private final TeachingPlanMapper teachingPlanMapper;
     private final AffairsScheduleMapper scheduleMapper;
 
     @Override
     public ListResponse<TermDto> list(String search, String isCurrent, long limit, long offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         long safeLimit = clampLimit(limit);
         long safeOffset = Math.max(offset, 0);
 
@@ -63,7 +65,7 @@ public class TermServiceImpl implements ITermService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TermDto create(TermPayload p) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         validate(p);
         int weeks = p.getWeeksCount() == null || p.getWeeksCount() <= 0 ? 16 : p.getWeeksCount();
         boolean isCurrent = Boolean.TRUE.equals(p.getIsCurrent());
@@ -84,7 +86,7 @@ public class TermServiceImpl implements ITermService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TermDto update(String id, TermPayload p) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         Term existing = fetchOwned(id);
         validate(p);
         int weeks = p.getWeeksCount() == null || p.getWeeksCount() <= 0 ? 16 : p.getWeeksCount();
@@ -104,7 +106,7 @@ public class TermServiceImpl implements ITermService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchOwned(id);
         long refs = teachingPlanMapper.selectCount(
                 QueryBuilder.lambda(TeachingPlan.class).eq(TeachingPlan::getTermId, id).build())
@@ -136,7 +138,7 @@ public class TermServiceImpl implements ITermService {
     }
 
     private Term fetchOwned(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         Term term = termMapper.selectOne(QueryBuilder.lambda(Term.class)
             .eq(Term::getId, id).eq(Term::getTenantId, tenantId).build());
         if (term == null) {
@@ -164,11 +166,4 @@ public class TermServiceImpl implements ITermService {
         return Math.min(limit, 200);
     }
 
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

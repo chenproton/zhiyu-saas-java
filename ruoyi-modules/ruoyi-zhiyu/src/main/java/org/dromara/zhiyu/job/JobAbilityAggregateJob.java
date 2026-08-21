@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>失败自动重试 1 次；panic recover 兜底（执行体内 catch Throwable）；</li>
  *   <li>执行记录落库 job_run_logs：开始 INSERT status=running，结束 UPDATE
  *       finished_at/status/error；记录写失败不影响任务本身（尽力而为）；</li>
- *   <li>pg advisory lock 737001 防多实例并发，拿不到锁则跳过（视为成功）；</li>
+ *   <li>MySQL GET_LOCK 737001 防多实例并发，拿不到锁则跳过（视为成功）；</li>
  *   <li>最终失败时向 ALERT_WEBHOOK_URL POST JSON 告警（未配置跳过，失败仅记日志）。</li>
  * </ul>
  *
@@ -41,12 +41,12 @@ public class JobAbilityAggregateJob {
     /** 任务名（job_run_logs.job_name，与 Go 一致） */
     public static final String JOB_NAME = "job-ability-aggregate";
 
-    /** advisory lock key（与 Go 一致：737001） */
+    /** 用户锁 key（与 Go advisory lock 一致：737001） */
     public static final long ADVISORY_LOCK_KEY = 737001L;
 
     private final IEvaluationJobAbilityService jobAbilityService;
     private final JobRunLogMapper jobRunLogMapper;
-    private final PgAdvisoryLockGuard advisoryLockGuard;
+    private final MySqlLockGuard lockGuard;
     private final JobAlertWebhookSender alertSender;
 
     /** SkipIfStillRunning 门闩 */
@@ -57,11 +57,11 @@ public class JobAbilityAggregateJob {
 
     public JobAbilityAggregateJob(IEvaluationJobAbilityService jobAbilityService,
                                   JobRunLogMapper jobRunLogMapper,
-                                  PgAdvisoryLockGuard advisoryLockGuard,
+                                  MySqlLockGuard lockGuard,
                                   JobAlertWebhookSender alertSender) {
         this.jobAbilityService = jobAbilityService;
         this.jobRunLogMapper = jobRunLogMapper;
-        this.advisoryLockGuard = advisoryLockGuard;
+        this.lockGuard = lockGuard;
         this.alertSender = alertSender;
     }
 
@@ -126,11 +126,11 @@ public class JobAbilityAggregateJob {
     }
 
     /**
-     * 汇聚主流程（对齐 Go aggregateAll）：advisory lock 737001 防多实例并发，
+     * 汇聚主流程（对齐 Go aggregateAll）：MySQL GET_LOCK 737001 防多实例并发，
      * 拿不到锁则跳过（返回成功）；锁由专用连接持有，unlock 在 close 内尽力而为。
      */
     private void aggregateWithLock() throws Exception {
-        try (PgAdvisoryLockGuard.LockHandle handle = advisoryLockGuard.tryAcquire(ADVISORY_LOCK_KEY)) {
+        try (MySqlLockGuard.LockHandle handle = lockGuard.tryAcquire(ADVISORY_LOCK_KEY)) {
             if (handle == null) {
                 log.info("岗位能力汇聚已被其他实例执行，跳过本次 job={}", JOB_NAME);
                 return;

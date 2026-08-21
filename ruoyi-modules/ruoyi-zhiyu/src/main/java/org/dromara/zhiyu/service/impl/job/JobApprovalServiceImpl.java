@@ -16,6 +16,7 @@ import org.dromara.zhiyu.domain.job.JobWorkflow;
 import org.dromara.zhiyu.mapper.job.JobApprovalMapper;
 import org.dromara.zhiyu.mapper.job.JobWorkflowMapper;
 import org.dromara.zhiyu.mapper.partner.PartnerSourceMergeMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobApprovalService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +61,7 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
         "teaching_plan", "teaching_plans"
     );
 
+    private final SystemGuard systemGuard;
     private final JobApprovalMapper approvalMapper;
     private final JobWorkflowMapper workflowMapper;
     private final PartnerSourceMergeMapper sourceMergeMapper;
@@ -67,9 +69,9 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
     @Override
     public ListResponse<ApprovalRecordDto> list(String status, String targetType, String submitterId,
                                                 long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobApprovalRecord> wrapper = QueryBuilder.lambda(JobApprovalRecord.class)
             .eq(JobApprovalRecord::getTenantId, tenantId)
@@ -89,8 +91,8 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
 
     @Override
     public ApprovalRecordDto get(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobApprovalRecord record = approvalMapper.selectApprovalByIdTenant(id, tenantId);
         if (record == null) {
             throw new ApiException(404, "not_found", "审批记录不存在");
@@ -104,8 +106,8 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
 
     @Override
     public ApprovalRecordDto create(ApprovalCreateRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getTargetType() == null || req.getTargetType().isEmpty()
             || req.getTargetId() == null || req.getTargetId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -132,8 +134,8 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecordDto review(String id, ApprovalReviewRequest req) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobApprovalRecord record = approvalMapper.selectApprovalByIdTenant(id, tenantId);
         if (record == null) {
             throw new ApiException(404, "not_found", "审批记录不存在");
@@ -486,29 +488,6 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
             }
         }
         return 0;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

@@ -61,7 +61,7 @@ public interface EvaluationExamQuestionMapper extends BaseMapperPlus<EvaluationE
     /** 移除已不选用的旧题（对齐 Go SyncExamQuestions 的 prune 分支）。 */
     @org.apache.ibatis.annotations.Delete("<script>DELETE FROM exam_questions"
         + " WHERE exam_id = #{examId} AND tenant_id = #{tenantId}"
-        + " AND NOT (JSON_CONTAINS(CAST(#{questionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(question_id), '$'))</script>")
+        + " AND NOT (JSON_CONTAINS(CAST(#{questionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(question_id), '$'))</script>")
     int deleteNotIn(@Param("examId") String examId, @Param("tenantId") String tenantId,
                     @Param("questionIds") List<String> questionIds);
 

@@ -40,6 +40,7 @@ import org.dromara.zhiyu.mapper.affairs.TrainingProgramMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
 import org.dromara.zhiyu.mapper.affairs.TermMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.affairs.ITeachingPlanService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +67,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    private final SystemGuard systemGuard;
     private final TeachingPlanMapper planMapper;
     private final TeachingPlanEntryMapper entryMapper;
     private final TrainingProgramMapper programMapper;
@@ -80,7 +82,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     @Override
     public ListResponse<TeachingPlanDto> list(String status, String programId, String termId, long limit, long offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         long safeLimit = clampLimit(limit);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<TeachingPlan> wrapper = QueryBuilder.lambda(TeachingPlan.class)
@@ -98,7 +100,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     @Override
     public TeachingPlanDto get(String id) {
         TeachingPlan plan = fetchOwned(id);
-        List<TeachingPlanEntry> entries = entryMapper.selectEntriesByPlan(id, requireTenant());
+        List<TeachingPlanEntry> entries = entryMapper.selectEntriesByPlan(id, systemGuard.requireTenant());
         return toDto(plan, entries);
     }
 
@@ -107,8 +109,8 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto create(GenerateTeachingPlanRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getProgramId() == null || req.getProgramId().isEmpty()
             || req.getTermId() == null || req.getTermId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -211,9 +213,9 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     @Override
     public TeachingPlanDto update(String id, UpdateTeachingPlanRequest req) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchOwned(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getBatchId() != null) {
             String batchId = req.getBatchId().isEmpty() ? null : req.getBatchId();
             planMapper.updateBatch(id, tenantId, batchId);
@@ -227,7 +229,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchOwned(id);
         planMapper.deleteById(id);
         return id;
@@ -268,7 +270,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TeachingPlanDto review(String id, ReviewRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         String to;
         if ("approved".equals(req.getStatus())) {
             to = "approved";
@@ -278,7 +280,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
         fetchOwnedAction(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         int rows = planMapper.casReview(id, tenantId, to);
         if (rows == 0) {
             throw new ApiException(400, "bad_request", "教学计划不存在或不在待处理状态");
@@ -288,12 +290,12 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     @Override
     public TeachingPlanDto invite(String id, InviteRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchOwnedAction(id);
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         ZhiyuUser user = userMapper.selectById(req.getUserId());
         if (user == null || !tenantId.equals(user.getTenantId())) {
             throw new ApiException(400, "bad_request", "用户不存在或不属于本租户");
@@ -304,9 +306,9 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     @Override
     public TeachingPlanDto confirm(String id) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchOwned(id);
-        planMapper.confirmPlan(id, requireTenant());
+        planMapper.confirmPlan(id, systemGuard.requireTenant());
         return toDto(fetchOwned(id), null);
     }
 
@@ -315,7 +317,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TeachingPlanEntryDto updateEntry(String id, TeachingPlanEntryUpdatePayload req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         TeachingPlanEntry entry = entryMapper.selectEntryById(id, tenantId);
         if (entry == null) {
             throw new ApiException(404, "not_found", "计划条目不存在");
@@ -377,7 +379,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteEntry(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (entryMapper.selectEntryById(id, tenantId) == null) {
             throw new ApiException(404, "not_found", "计划条目不存在");
         }
@@ -389,7 +391,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
 
     @Override
     public ExcelExport exportExcel(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         TeachingPlan plan = fetchOwned(id);
         List<TeachingPlanEntry> entries = entryMapper.selectEntriesByPlan(id, tenantId);
         byte[] bytes = buildExcel(plan, entries);
@@ -587,9 +589,9 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     // ---------- 状态流转 ----------
 
     private TeachingPlanDto transition(String id, String toStatus) {
-        requireUser();
+        systemGuard.requireUser();
         TeachingPlan plan = fetchOwnedAction(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String current = plan.getStatus();
         if (!ContentActionSupport.canTransition(current, toStatus)) {
             throw new ApiException(409, "conflict", "当前状态不允许该操作（teaching_plan）");
@@ -610,7 +612,7 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
     // ---------- 工具 ----------
 
     private TeachingPlan fetchOwned(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         TeachingPlan plan = planMapper.selectOne(QueryBuilder.lambda(TeachingPlan.class)
             .eq(TeachingPlan::getId, id).eq(TeachingPlan::getTenantId, tenantId).build());
         if (plan == null) {
@@ -714,19 +716,4 @@ public class TeachingPlanServiceImpl implements ITeachingPlanService {
         return s == null || s.isEmpty() ? null : s;
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

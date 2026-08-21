@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * 企业共建岗位 Mapper（career_positions 及其子表，Go→Java 迁移）。
  *
- * <p>基础读取走 MyBatis-Plus 内置 selectById/selectList（数组列经 PgArrayTypeHandler 映射）；
+ * <p>基础读取走 MyBatis-Plus 内置 selectById/selectList（数组列经 JsonStringArrayTypeHandler 映射）；
  * 可见性过滤/写入走自定义 SQL（数组/jsonb 需显式 CAST）。</p>
  *
  * @author zhiyu
@@ -67,9 +67,9 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
         + " collaborators, source_type, source_enterprise_id, source_resource_id)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{batchId}, #{name}, #{shortName}, #{industryId}, #{positionType},"
         + " #{salaryMin}, #{salaryMax}, #{coverImage}, #{description},"
-        + " #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{careerPath}, #{version}, #{status}, #{createdBy},"
-        + " #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{sourceType}, #{sourceEnterpriseId}, #{sourceResourceId})")
     int insertCoBuildPosition(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                               @Param("batchId") String batchId, @Param("name") String name,
@@ -86,9 +86,9 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
     @Update("UPDATE career_positions SET batch_id = #{batchId}, name = #{name}, short_name = #{shortName},"
         + " industry_id = #{industryId}, position_type = #{positionType}, salary_min = #{salaryMin},"
         + " salary_max = #{salaryMax}, cover_image = #{coverImage}, description = #{description},"
-        + " requirements = #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " requirements = #{requirements, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " career_path = #{careerPath}, version = #{version},"
-        + " collaborators = #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " collaborators = #{collaborators, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id}")
     int updateCoBuildPosition(@Param("id") String id, @Param("batchId") String batchId, @Param("name") String name,
                               @Param("shortName") String shortName, @Param("industryId") String industryId,
@@ -193,7 +193,7 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
         + " source, domain, required_level, rubric_description, attributes, weight)"
         + " VALUES (#{id}, #{tenantId}, #{positionId}, #{responsibilityId}, #{abilityPointId},"
         + " #{source}, #{domain}, #{requiredLevel}, #{rubricDescription},"
-        + " #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{weight})"
+        + " #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, #{weight})"
         + " ON DUPLICATE KEY UPDATE"
         + " domain = VALUES(domain), required_level = VALUES(required_level),"
         + " rubric_description = VALUES(rubric_description), attributes = VALUES(attributes), weight = VALUES(weight)")
@@ -214,7 +214,7 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     @Insert("INSERT INTO ability_domains (id, tenant_id, career_position_id, name, description, binding_ids, sort_order)"
         + " VALUES (#{id}, #{tenantId}, #{positionId}, #{name}, #{description},"
-        + " #{bindingIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{sortOrder})")
+        + " #{bindingIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, #{sortOrder})")
     int insertAbilityDomain(@Param("id") String id, @Param("tenantId") String tenantId,
                             @Param("positionId") String positionId, @Param("name") String name,
                             @Param("description") String description, @Param("bindingIds") List<String> bindingIds,
@@ -225,7 +225,7 @@ public interface PartnerPositionMapper extends BaseMapperPlus<JobCareerPosition,
 
     @Insert("INSERT INTO ability_points (id, tenant_id, name, description, code, attributes, is_public)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{description}, #{code},"
-        + " #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, false)")
+        + " #{attributes, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, false)")
     int insertAbilityPoint(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                            @Param("description") String description, @Param("code") String code,
                            @Param("attributes") List<String> attributes);

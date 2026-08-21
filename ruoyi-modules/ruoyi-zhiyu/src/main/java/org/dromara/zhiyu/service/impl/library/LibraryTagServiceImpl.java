@@ -13,6 +13,7 @@ import org.dromara.zhiyu.domain.dto.library.LibraryDtos.UpdateTagRequest;
 import org.dromara.zhiyu.domain.library.LibraryTag;
 import org.dromara.zhiyu.mapper.library.LibraryResourceTagRelationMapper;
 import org.dromara.zhiyu.mapper.library.LibraryTagMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.library.ILibraryTagService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -53,19 +54,20 @@ public class LibraryTagServiceImpl implements ILibraryTagService {
     /** 单次查询资源数量上限（对齐 Go QueryBindings 200 限制） */
     private static final int MAX_QUERY_IDS = 200;
 
+    private final SystemGuard systemGuard;
     private final LibraryTagMapper tagMapper;
     private final LibraryResourceTagRelationMapper tagRelationMapper;
 
     @Override
     public List<TagDto> list() {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         List<LibraryTag> rows = tagMapper.selectWithResourceCount(tenantId);
         return rows.stream().map(this::toDto).toList();
     }
 
     @Override
     public TagDto create(CreateTagRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String name = req.getName() == null ? "" : req.getName().trim();
         validateName(name);
         String color = req.getColor() == null ? "" : req.getColor().trim();
@@ -92,8 +94,8 @@ public class LibraryTagServiceImpl implements ILibraryTagService {
 
     @Override
     public TagDto update(String id, UpdateTagRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         String name = req.getName() == null ? "" : req.getName().trim();
         validateName(name);
         String color = req.getColor() == null ? "" : req.getColor().trim();
@@ -114,8 +116,8 @@ public class LibraryTagServiceImpl implements ILibraryTagService {
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         fetchOwned(id, tenantId);
         tagMapper.deleteOwned(id, tenantId);
         return id;
@@ -124,7 +126,7 @@ public class LibraryTagServiceImpl implements ILibraryTagService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void setResourceTags(SetResourceTagsRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!TAG_RESOURCE_TYPES.contains(req.getResourceType())) {
             throw new ApiException(400, "bad_request", "不支持的资源类型");
         }
@@ -149,7 +151,7 @@ public class LibraryTagServiceImpl implements ILibraryTagService {
 
     @Override
     public List<ResourceTagRelationDto> queryBindings(QueryBindingsRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (!TAG_RESOURCE_TYPES.contains(req.getResourceType())) {
             throw new ApiException(400, "bad_request", "不支持的资源类型");
         }
@@ -245,19 +247,4 @@ public class LibraryTagServiceImpl implements ILibraryTagService {
         }
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

@@ -10,6 +10,7 @@ import org.dromara.zhiyu.domain.dto.scene.SceneDtos.BatchStatusRequest;
 import org.dromara.zhiyu.domain.dto.scene.SceneDtos.BatchUpdateRequest;
 import org.dromara.zhiyu.domain.scene.SceneBatch;
 import org.dromara.zhiyu.mapper.scene.SceneBatchMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.scene.ISceneBatchService;
 import org.springframework.stereotype.Service;
 
@@ -30,12 +31,13 @@ import java.util.UUID;
 @Service
 public class SceneBatchServiceImpl implements ISceneBatchService {
 
+    private final SystemGuard systemGuard;
     private final SceneBatchMapper batchMapper;
 
     @Override
     public ListResponse<BatchDto> list(String orgNodeId, String status, String search, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         String pattern = toLikePattern(search);
 
@@ -51,15 +53,15 @@ public class SceneBatchServiceImpl implements ISceneBatchService {
 
     @Override
     public BatchDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         SceneBatch batch = fetchOwned(id);
         return toDto(batch);
     }
 
     @Override
     public BatchDto create(BatchCreateRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -87,7 +89,7 @@ public class SceneBatchServiceImpl implements ISceneBatchService {
 
     @Override
     public BatchDto update(String id, BatchUpdateRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         SceneBatch existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
         if (req.getName() == null || req.getName().isEmpty()) {
@@ -109,7 +111,7 @@ public class SceneBatchServiceImpl implements ISceneBatchService {
 
     @Override
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         SceneBatch existing = fetchOwned(id);
         batchMapper.deleteBatch(id, existing.getTenantId());
         return id;
@@ -117,7 +119,7 @@ public class SceneBatchServiceImpl implements ISceneBatchService {
 
     @Override
     public BatchDto updateStatus(String id, BatchStatusRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         SceneBatch existing = fetchOwned(id);
         if (req.getStatus() == null || (!"open".equals(req.getStatus()) && !"closed".equals(req.getStatus()))) {
             throw new ApiException(400, "bad_request", "无效状态");
@@ -166,29 +168,6 @@ public class SceneBatchServiceImpl implements ISceneBatchService {
         dto.setCreatedAt(b.getCreatedAt());
         dto.setUpdatedAt(b.getUpdatedAt());
         return dto;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

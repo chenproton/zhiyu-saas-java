@@ -24,7 +24,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " target_type, target_ids, status, activation_mode, creator_id, exam_version)"
         + " VALUES (#{id}, #{tenantId}, #{examId}, #{name}, #{description}, #{startTime}, #{endTime}, #{duration},"
         + " #{targetType},"
-        + " #{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{status}, #{activationMode}, #{creatorId}, #{examVersion})")
     int insertUsage(@Param("id") String id, @Param("tenantId") String tenantId, @Param("examId") String examId,
                     @Param("name") String name, @Param("description") String description,
@@ -37,7 +37,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
     @Update("UPDATE exam_usages SET name = #{name}, description = COALESCE(#{description}, description),"
         + " start_time = COALESCE(#{startTime}, start_time), end_time = COALESCE(#{endTime}, end_time),"
         + " duration = COALESCE(#{duration}, duration), target_type = COALESCE(#{targetType}, target_type),"
-        + " target_ids = COALESCE(#{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, target_ids),"
+        + " target_ids = COALESCE(#{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, target_ids),"
         + " activation_mode = #{activationMode},"
         + " status = CASE WHEN #{activationMode} = 'always' THEN 'published' ELSE status END,"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
@@ -53,7 +53,7 @@ public interface EvaluationExamUsageMapper extends BaseMapperPlus<EvaluationExam
         + " VALUES (#{id}, #{tenantId}, #{examId}, #{name}, NULL,"
         + " CAST(NULLIF(#{startTime}, '') AS DATETIME), CAST(NULLIF(#{endTime}, '') AS DATETIME),"
         + " #{duration}, #{targetType},"
-        + " #{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{targetIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{status}, #{activationMode}, #{creatorId}, #{examVersion})")
     int insertNodeUsage(@Param("id") String id, @Param("tenantId") String tenantId, @Param("examId") String examId,
                         @Param("name") String name, @Param("startTime") String startTime,

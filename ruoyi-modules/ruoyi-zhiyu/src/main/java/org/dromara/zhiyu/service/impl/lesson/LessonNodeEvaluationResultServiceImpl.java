@@ -17,6 +17,7 @@ import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.lesson.NodeEvaluationResultMapper;
 import org.dromara.zhiyu.mapper.lesson.SystemCourseNodeMapper;
 import org.dromara.zhiyu.mapper.portal.PortalResourceSnapshotMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonNodeEvaluationResultService;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +39,7 @@ public class LessonNodeEvaluationResultServiceImpl implements ILessonNodeEvaluat
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final NodeEvaluationResultMapper resultMapper;
     private final SystemCourseNodeMapper nodeMapper;
     private final PortalResourceSnapshotMapper snapshotMapper;
@@ -45,12 +47,12 @@ public class LessonNodeEvaluationResultServiceImpl implements ILessonNodeEvaluat
 
     @Override
     public ListResponse<NodeEvaluationResultDto> list(String nodeId, String evaluateeId, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (nodeId == null || nodeId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少节点ID");
         }
-        long safeLimit = clampLimit(limit, 20);
+        long safeLimit = systemGuard.clampLimit(limit, 20);
         long safeOffset = Math.max(offset, 0);
 
         LambdaQueryBuilder<NodeEvaluationResult> wrapper = QueryBuilder.lambda(NodeEvaluationResult.class)
@@ -69,8 +71,8 @@ public class LessonNodeEvaluationResultServiceImpl implements ILessonNodeEvaluat
 
     @Override
     public ListResponse<NodeEvaluationResultDto> listByCourse(String courseId) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         denyStudent("学生无权查看评分列表");
         if (courseId == null || courseId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少课程ID");
@@ -82,17 +84,17 @@ public class LessonNodeEvaluationResultServiceImpl implements ILessonNodeEvaluat
 
     @Override
     public NodeEvaluationResultDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         denyStudent("学生无权查看评分详情");
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         return toDto(fetchOwned(id, tenantId));
     }
 
     @Override
     public boolean grade(String id, GradeNodeResultRequest req) {
-        String graderId = requireUser();
+        String graderId = systemGuard.requireUser();
         denyStudent("学生无权评分");
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         fetchOwned(id, tenantId);
         int rows = resultMapper.grade(id, tenantId, graderId, req.getScore(), req.getComment(),
             toJson(req.getEvalPointScores()));
@@ -104,8 +106,8 @@ public class LessonNodeEvaluationResultServiceImpl implements ILessonNodeEvaluat
 
     @Override
     public NodeEvaluationResultDto submit(SubmitNodeEvaluationResultRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getNodeId() == null || req.getNodeId().isEmpty()
             || req.getMethodKey() == null || req.getMethodKey().isEmpty()
             || req.getEvaluateeId() == null || req.getEvaluateeId().isEmpty()) {
@@ -233,26 +235,4 @@ public class LessonNodeEvaluationResultServiceImpl implements ILessonNodeEvaluat
         return s == null || s.isEmpty() ? null : s;
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, long defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

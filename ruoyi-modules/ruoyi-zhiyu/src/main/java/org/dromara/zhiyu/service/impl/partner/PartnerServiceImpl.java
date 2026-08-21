@@ -37,6 +37,7 @@ import org.dromara.zhiyu.mapper.partner.PartnerCooperationMapper;
 import org.dromara.zhiyu.mapper.partner.PartnerEnterpriseLinkMapper;
 import org.dromara.zhiyu.mapper.partner.PartnerEnterpriseMapper;
 import org.dromara.zhiyu.mapper.partner.PartnerExpertMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.partner.IPartnerService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -70,6 +71,7 @@ public class PartnerServiceImpl implements IPartnerService {
         "terminated", Map.of()
     );
 
+    private final SystemGuard systemGuard;
     private final PartnerEnterpriseMapper enterpriseMapper;
     private final PartnerExpertMapper expertMapper;
     private final PartnerEnterpriseLinkMapper linkMapper;
@@ -91,13 +93,13 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public PartnerEnterprise getProfile() {
-        return resolveEnterprise(requireTenant());
+        return resolveEnterprise(systemGuard.requireTenant());
     }
 
     @Override
     public PartnerEnterprise updateProfile(ProfileUpdateRequest req) {
         requireEnterpriseAdmin();
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PartnerEnterprise existing = resolveEnterprise(tenantId);
 
         String name = req.getName() == null || req.getName().isEmpty() ? existing.getName() : req.getName();
@@ -132,7 +134,7 @@ public class PartnerServiceImpl implements IPartnerService {
     @Override
     public ListResponse<PartnerExpert> listExperts(String search, long limit, long offset) {
         requireEnterpriseAdmin();
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         LambdaQueryBuilder<PartnerExpert> wrapper = QueryBuilder.lambda(PartnerExpert.class)
             .eq(PartnerExpert::getTenantId, tenantId);
         if (search != null && !search.isEmpty()) {
@@ -146,15 +148,15 @@ public class PartnerServiceImpl implements IPartnerService {
     @Override
     public PartnerExpert getExpert(String id) {
         requireEnterpriseAdmin();
-        return fetchExpert(id, requireTenant());
+        return fetchExpert(id, systemGuard.requireTenant());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExpertCreateResponse createExpert(ExpertCreateRequest req) {
         requireEnterpriseAdmin();
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "专家姓名不能为空");
         }
@@ -220,7 +222,7 @@ public class PartnerServiceImpl implements IPartnerService {
     @Transactional(rollbackFor = Exception.class)
     public PartnerExpert updateExpert(String id, ExpertUpdateRequest req) {
         requireEnterpriseAdmin();
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PartnerExpert existing = fetchExpert(id, tenantId);
         PartnerExpert merged = mergeExpertPartial(existing, req);
 
@@ -247,7 +249,7 @@ public class PartnerServiceImpl implements IPartnerService {
     @Transactional(rollbackFor = Exception.class)
     public String deleteExpert(String id) {
         requireEnterpriseAdmin();
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PartnerExpert expert = fetchExpert(id, tenantId);
         if (expert.getUserId() != null) {
             expertMapper.removeExpertFromReviewSteps(expert.getUserId());
@@ -260,8 +262,8 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public PartnerExpert getMyExpert() {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         List<PartnerExpert> rows = expertMapper.selectList(QueryBuilder.lambda(PartnerExpert.class)
             .eq(PartnerExpert::getTenantId, tenantId)
             .eq(PartnerExpert::getUserId, userId)
@@ -274,7 +276,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public PartnerExpert updateMyExpert(ExpertUpdateRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PartnerExpert existing = getMyExpert();
         PartnerExpert merged = mergeExpertPartial(existing, req);
         merged.setTenantId(tenantId);
@@ -287,7 +289,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public Dashboard dashboard() {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         Dashboard d = new Dashboard();
         d.setExpertCount((int) cooperationMapper.countExperts(tenantId));
         d.setSchoolCount((int) linkMapper.countByEnterpriseTenant(tenantId));
@@ -334,14 +336,14 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public ListResponse<School> listSchools() {
-        List<School> schools = linkMapper.listSchools(requireTenant());
+        List<School> schools = linkMapper.listSchools(systemGuard.requireTenant());
         return ListResponse.of(schools, schools.size());
     }
 
     @Override
     public School updateSchoolStatus(String schoolTenantId, SchoolStatusRequest req) {
         requireEnterpriseAdmin();
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String status = req.getStatus();
         if (!"active".equals(status) && !"paused".equals(status) && !"terminated".equals(status)) {
             throw new ApiException(400, "bad_request", "无效合作状态（仅支持 active/paused/terminated）");
@@ -363,7 +365,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public List<CooperationSchool> listCooperation() {
-        String enterpriseId = resolveEnterprise(requireTenant()).getId();
+        String enterpriseId = resolveEnterprise(systemGuard.requireTenant()).getId();
         List<CooperationSchool> schools = cooperationMapper.listCooperationSchools(enterpriseId);
         if (schools.isEmpty()) {
             return schools;
@@ -423,7 +425,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public CooperationProjectDetail getCooperationProject(String id) {
-        String enterpriseId = resolveEnterprise(requireTenant()).getId();
+        String enterpriseId = resolveEnterprise(systemGuard.requireTenant()).getId();
         PartnerCooperationMapper.ProjectDetailRow r = cooperationMapper.getCooperationProject(enterpriseId, id);
         if (r == null) {
             throw new ApiException(404, "not_found", "项目不存在或无权查看");
@@ -459,7 +461,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public CooperationAchievementDetail getCooperationAchievement(String id) {
-        String enterpriseId = resolveEnterprise(requireTenant()).getId();
+        String enterpriseId = resolveEnterprise(systemGuard.requireTenant()).getId();
         PartnerCooperationMapper.AchievementDetailRow r = cooperationMapper.getCooperationAchievement(enterpriseId, id);
         if (r == null) {
             throw new ApiException(404, "not_found", "成果不存在或无权查看");
@@ -484,7 +486,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public CooperationAgreementDetail getCooperationAgreement(String id) {
-        String enterpriseId = resolveEnterprise(requireTenant()).getId();
+        String enterpriseId = resolveEnterprise(systemGuard.requireTenant()).getId();
         PartnerCooperationMapper.AgreementDetailRow r = cooperationMapper.getCooperationAgreement(enterpriseId, id);
         if (r == null) {
             throw new ApiException(404, "not_found", "协议不存在或无权查看");
@@ -505,7 +507,7 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public List<MentorTask> listMentorTasks() {
-        String enterpriseId = resolveEnterprise(requireTenant()).getId();
+        String enterpriseId = resolveEnterprise(systemGuard.requireTenant()).getId();
         return cooperationMapper.listMentorTasks(enterpriseId);
     }
 
@@ -513,8 +515,8 @@ public class PartnerServiceImpl implements IPartnerService {
 
     @Override
     public String changeMyPassword(ChangePasswordRequest req) {
-        String userId = requireUser();
-        String tenantId = requireTenant();
+        String userId = systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getOldPassword() == null || req.getOldPassword().isEmpty()) {
             throw new ApiException(400, "bad_request", "旧密码不能为空");
         }
@@ -669,19 +671,4 @@ public class PartnerServiceImpl implements IPartnerService {
         return Math.min(limit, 200);
     }
 
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
 }

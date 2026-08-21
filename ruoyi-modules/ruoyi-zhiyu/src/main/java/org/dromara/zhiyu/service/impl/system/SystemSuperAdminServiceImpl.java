@@ -64,7 +64,7 @@ public class SystemSuperAdminServiceImpl implements ISystemSuperAdminService {
     @Override
     public ListResponse<ZhiyuTenant> adminList(String search, String status, String type, long limit, long offset) {
         guard.requireManagePlatform();
-        long safeLimit = clampLimit(limit, 20);
+        long safeLimit = guard.clampLimit(limit, 20);
         LambdaQueryBuilder<ZhiyuTenant> wrapper = QueryBuilder.lambda(ZhiyuTenant.class)
             .ne(ZhiyuTenant::getId, OPERATOR_TENANT_ID);
         if (status != null && !status.isBlank()) {
@@ -529,10 +529,4 @@ public class SystemSuperAdminServiceImpl implements ISystemSuperAdminService {
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

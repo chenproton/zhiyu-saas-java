@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.ZhiyuUser;
 
 import java.util.List;
@@ -24,7 +24,7 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
         + " name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, status, graduate_year,"
         + " last_login_at, created_at, updated_at FROM users WHERE id = #{id} AND tenant_id = #{tenantId}")
     @Results({
-        @Result(column = "title_ids", property = "titleIds", typeHandler = PgArrayTypeHandler.class)
+        @Result(column = "title_ids", property = "titleIds", typeHandler = JsonStringArrayTypeHandler.class)
     })
     ZhiyuUser selectUserByIdAndTenant(@Param("id") String id, @Param("tenantId") String tenantId);
 
@@ -32,7 +32,7 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
         + " username, password_hash, name, email, phone, avatar_url, student_no, work_id, id_card, title_ids, oauth, status)"
         + " VALUES (#{id}, #{tenantId}, #{institutionId}, #{orgNodeId}, #{majorId}, #{role}, #{platform}, #{globalLoginName},"
         + " #{username}, #{passwordHash}, #{name}, #{email}, #{phone}, #{avatarUrl}, #{studentNo}, #{workId}, #{idCard},"
-        + " COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, JSON_ARRAY()), '{}', 'active')")
+        + " COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, JSON_ARRAY()), '{}', 'active')")
     int insertUser(@Param("id") String id, @Param("tenantId") String tenantId, @Param("institutionId") String institutionId,
                    @Param("orgNodeId") String orgNodeId, @Param("majorId") String majorId, @Param("role") String role,
                    @Param("platform") String platform, @Param("globalLoginName") String globalLoginName,
@@ -48,7 +48,7 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
         + " email = COALESCE(#{email}, email), phone = COALESCE(#{phone}, phone),"
         + " avatar_url = COALESCE(#{avatarUrl}, avatar_url), student_no = COALESCE(#{studentNo}, student_no),"
         + " work_id = COALESCE(#{workId}, work_id), id_card = COALESCE(#{idCard}, id_card),"
-        + " title_ids = COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, title_ids),"
+        + " title_ids = COALESCE(#{titleIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, title_ids),"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateUser(@Param("id") String id, @Param("tenantId") String tenantId, @Param("institutionId") String institutionId,
                    @Param("orgNodeId") String orgNodeId, @Param("majorId") String majorId, @Param("role") String role,
@@ -72,17 +72,17 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
     int deleteUser(@Param("id") String id, @Param("tenantId") String tenantId);
 
     @Update("UPDATE users SET status = 'graduated', graduate_year = #{graduateYear}, updated_at = NOW()"
-        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
+        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND tenant_id = #{tenantId} AND status = 'active'")
     int batchGraduate(@Param("tenantId") String tenantId, @Param("userIds") List<String> userIds,
                       @Param("graduateYear") Integer graduateYear);
 
-    @Delete("DELETE FROM users WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
+    @Delete("DELETE FROM users WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND tenant_id = #{tenantId}")
     int batchDeleteUsers(@Param("tenantId") String tenantId, @Param("userIds") List<String> userIds);
 
     @Update("UPDATE users SET org_node_id = #{orgNodeId}, updated_at = NOW()"
-        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
+        + " WHERE JSON_CONTAINS(CAST(#{userIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')"
         + " AND tenant_id = #{tenantId}")
     int batchUpdateOrgNode(@Param("tenantId") String tenantId, @Param("userIds") List<String> userIds,
                            @Param("orgNodeId") String orgNodeId);
@@ -112,7 +112,7 @@ public interface SystemUserMapper extends BaseMapperPlus<ZhiyuUser, ZhiyuUser> {
         + " <if test='search != null and search != \"\"'> AND (username LIKE CONCAT('%', #{search}, '%') OR name LIKE CONCAT('%', #{search}, '%') OR email LIKE CONCAT('%', #{search}, '%'))</if>"
         + " ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}</script>")
     @Results({
-        @Result(column = "title_ids", property = "titleIds", typeHandler = PgArrayTypeHandler.class)
+        @Result(column = "title_ids", property = "titleIds", typeHandler = JsonStringArrayTypeHandler.class)
     })
     List<ZhiyuUser> selectUserPage(@Param("tenantId") String tenantId, @Param("institutionId") String institutionId,
                                    @Param("roleId") String roleId, @Param("roleCode") String roleCode,

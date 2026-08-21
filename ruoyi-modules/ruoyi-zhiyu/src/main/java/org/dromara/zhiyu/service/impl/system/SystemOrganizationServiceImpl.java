@@ -38,7 +38,7 @@ public class SystemOrganizationServiceImpl implements ISystemOrganizationService
     public ListResponse<SystemOrganization> list(String typeId, String parentId, String rootOnly, String search,
                                                  long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemOrganization> wrapper = QueryBuilder.lambda(SystemOrganization.class)
             .eq(SystemOrganization::getTenantId, tenantId);
         if (typeId != null && !typeId.isBlank()) {
@@ -201,10 +201,4 @@ public class SystemOrganizationServiceImpl implements ISystemOrganizationService
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

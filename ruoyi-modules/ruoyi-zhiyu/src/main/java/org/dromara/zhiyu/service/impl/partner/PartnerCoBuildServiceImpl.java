@@ -62,6 +62,7 @@ import org.dromara.zhiyu.mapper.portal.PortalIndustryMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
 import org.dromara.zhiyu.mapper.scene.SceneRubricTemplateMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.partner.IPartnerCoBuildService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -91,6 +92,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> EDITABLE_STATUSES = Set.of("draft", "pending", "rejected");
 
+    private final SystemGuard systemGuard;
     private final PartnerPositionMapper positionMapper;
     private final PartnerScenarioMapper scenarioMapper;
     private final PartnerScenarioTaskMapper taskMapper;
@@ -146,7 +148,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     @Transactional(rollbackFor = Exception.class)
     public CoBuildPositionDto createPosition(PositionCreateRequest req) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         if (req.getSchoolTenantId() == null || req.getSchoolTenantId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()
             || req.getPositionType() == null || req.getPositionType().isEmpty()) {
@@ -317,7 +319,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     @Transactional(rollbackFor = Exception.class)
     public CoBuildPositionDto submitPosition(String id) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         JobCareerPosition pos = ownedPosition(enterpriseId, id);
         requireActiveLink(enterpriseId, pos.getTenantId());
         String schoolTenantId = pos.getTenantId();
@@ -345,7 +347,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     @Transactional(rollbackFor = Exception.class)
     public CoBuildPositionDto editSourcePosition(String id) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         JobCareerPosition src = positionMapper.selectById(id);
         if (src == null) {
             throw new ApiException(404, "not_found", "岗位不存在或未授权");
@@ -505,7 +507,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     @Transactional(rollbackFor = Exception.class)
     public CoBuildScenarioDto createScenario(ScenarioCreateRequest req) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         if (req.getSchoolTenantId() == null || req.getSchoolTenantId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -567,7 +569,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     @Transactional(rollbackFor = Exception.class)
     public CoBuildScenarioDto submitScenario(String id) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         SceneScenario sc = ownedScenario(enterpriseId, id);
         requireActiveLink(enterpriseId, sc.getTenantId());
         if (scenarioMapper.casTransition(id, sc.getTenantId(), sc.getStatus(), "pending") == 0) {
@@ -594,7 +596,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     @Transactional(rollbackFor = Exception.class)
     public CoBuildScenarioDto editSourceScenario(String id) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         SceneScenario src = scenarioMapper.selectById(id);
         if (src == null || src.getTenantId() == null) {
             throw new ApiException(404, "not_found", "场景方案不存在或未授权");
@@ -758,7 +760,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     @Transactional(rollbackFor = Exception.class)
     public EvaluationMethodsResponse saveTaskEvaluationMethods(String taskId, SaveEvaluationMethodsRequest req) {
         String enterpriseId = resolveEnterpriseId();
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         SceneScenarioTask task = taskMapper.selectById(taskId);
         if (task == null) {
             throw new ApiException(404, "not_found", "场景任务不存在");
@@ -1310,7 +1312,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     }
 
     private String resolveEnterpriseId() {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PartnerEnterprise enterprise = enterpriseMapper.selectList(
             QueryBuilder.lambda(PartnerEnterprise.class).eq(PartnerEnterprise::getTenantId, tenantId).build())
             .stream().findFirst().orElse(null);
@@ -1369,22 +1371,6 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
             return 20;
         }
         return Math.min(limit, 200);
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
     }
 
     // ===== 请求项包装（避免冗长泛型，直接展开） =====

@@ -22,8 +22,8 @@ public interface EvaluationQuestionBankMapper extends BaseMapperPlus<EvaluationQ
     @Insert("INSERT INTO question_banks (id, tenant_id, code, name, description, cover_image, status, question_count,"
         + " creator_id, collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, is_draft_pool)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{name}, #{description}, #{coverImage}, 'draft', 0, #{creatorId},"
-        + " #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{batchId}, 'V1.0', 'mine', FALSE)")
     int insertBank(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                    @Param("name") String name, @Param("description") String description,
@@ -33,8 +33,8 @@ public interface EvaluationQuestionBankMapper extends BaseMapperPlus<EvaluationQ
                    @Param("batchId") String batchId);
 
     @Update("UPDATE question_banks SET name = #{name}, description = #{description}, cover_image = #{coverImage},"
-        + " collaborator_ids = #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " collaborator_dept_ids = #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " collaborator_ids = #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " collaborator_dept_ids = #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " batch_id = #{batchId}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateBank(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,

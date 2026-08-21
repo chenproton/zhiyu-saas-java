@@ -19,8 +19,8 @@ public interface EvaluationExamMapper extends BaseMapperPlus<PortalExam, PortalE
     @Insert("INSERT INTO exams (id, tenant_id, code, name, description, status, total_score, duration, cover_image,"
         + " collaborator_ids, collaborator_dept_ids, batch_id, version, owner_type, creator_id, is_temp)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{name}, #{description}, 'draft', 0, #{duration}, #{coverImage},"
-        + " #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{batchId}, 'V1.0', 'mine', #{creatorId}, #{isTemp})")
     int insertExam(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                    @Param("name") String name, @Param("description") String description,
@@ -32,8 +32,8 @@ public interface EvaluationExamMapper extends BaseMapperPlus<PortalExam, PortalE
 
     @Update("UPDATE exams SET name = #{name}, description = #{description}, duration = #{duration},"
         + " cover_image = #{coverImage},"
-        + " collaborator_ids = #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " collaborator_dept_ids = #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " collaborator_ids = #{collaboratorIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " collaborator_dept_ids = #{collaboratorDeptIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " batch_id = #{batchId}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateExam(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,

@@ -4,7 +4,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -40,7 +40,7 @@ public interface QuestionImportMapper {
     /** 覆盖导入：更新题目类型/选项/答案/解析/分值/难度/知识点（不更新题干；限定租户）。 */
     @Update("UPDATE questions SET type = #{type}, options = CAST(#{options} AS JSON), answer = #{answer},"
         + " analysis = #{analysis}, score = #{score}, difficulty = #{difficulty},"
-        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " knowledge_point_ids = #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateQuestionImport(@Param("id") String id, @Param("tenantId") String tenantId, @Param("type") String type,
                              @Param("options") String options, @Param("answer") String answer,
@@ -53,7 +53,7 @@ public interface QuestionImportMapper {
         + " difficulty, knowledge_point_ids, creator_id, source, status)"
         + " VALUES (#{id}, #{tenantId}, #{code}, #{bankId}, #{type}, #{content},"
         + " CAST(#{options} AS JSON), #{answer}, #{analysis}, #{score}, #{difficulty},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{creatorId}, #{source}, 'draft')")
     int insertQuestionImport(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                              @Param("bankId") String bankId, @Param("type") String type,

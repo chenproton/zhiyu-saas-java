@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.scene.SceneEvalMethod;
 
 import java.math.BigDecimal;
@@ -16,7 +16,7 @@ import java.util.List;
  * 任务测评方式 Mapper（task_evaluation_methods 及子表，Go→Java 迁移）。
  *
  * <p>读取走 MyBatis-Plus 内置方法（jsonb 以 String 承载、数组列经
- * {@link PgArrayTypeHandler} 映射）；写入走自定义 SQL（jsonb/uuid[] 需显式 CAST）。</p>
+ * {@link JsonStringArrayTypeHandler} 映射）；写入走自定义 SQL（jsonb/uuid[] 需显式 CAST）。</p>
  *
  * @author zhiyu
  */
@@ -85,10 +85,10 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
     @Insert("INSERT INTO task_eval_points (tenant_id, config_id, name, description, sub_type, types, weight,"
         + " scoring_method, grade_mapping, knowledge_point_ids, ability_point_ids, sort_order)"
         + " VALUES (#{tenantId}, #{configId}, #{name}, #{description}, #{subType},"
-        + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler}, #{weight},"
+        + " #{types, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler}, #{weight},"
         + " #{scoringMethod}, CAST(#{gradeMapping} AS JSON),"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{sortOrder})")
     int insertEvalPoint(@Param("tenantId") String tenantId, @Param("configId") String configId,
                         @Param("name") String name, @Param("description") String description,
@@ -115,7 +115,7 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
         + " sort_order, assigned_user_ids)"
         + " VALUES (#{tenantId}, #{configId}, #{label}, #{description}, #{enabled}, #{subjectType}, #{weight},"
         + " #{sortOrder},"
-        + " #{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler})")
+        + " #{assignedUserIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler})")
     int insertReviewStep(@Param("tenantId") String tenantId, @Param("configId") String configId,
                          @Param("label") String label, @Param("description") String description,
                          @Param("enabled") Boolean enabled, @Param("subjectType") String subjectType,

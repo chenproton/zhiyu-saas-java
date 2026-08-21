@@ -35,7 +35,7 @@ public class SystemTenantServiceImpl implements ISystemTenantService {
     @Override
     public ListResponse<ZhiyuTenant> list(String search, String status, String type, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<ZhiyuTenant> wrapper = QueryBuilder.lambda(ZhiyuTenant.class)
             .eq(ZhiyuTenant::getId, tenantId);
         if (status != null && !status.isBlank()) {
@@ -176,10 +176,4 @@ public class SystemTenantServiceImpl implements ISystemTenantService {
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

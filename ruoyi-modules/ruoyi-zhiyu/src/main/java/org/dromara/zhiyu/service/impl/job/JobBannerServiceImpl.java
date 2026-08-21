@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.job;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -10,6 +11,7 @@ import org.dromara.zhiyu.domain.dto.job.JobDtos.BannerRequest;
 import org.dromara.zhiyu.domain.dto.job.JobDtos.JobBannerConfigDto;
 import org.dromara.zhiyu.domain.job.JobBannerConfig;
 import org.dromara.zhiyu.mapper.job.JobBannerMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobBannerService;
 import org.springframework.stereotype.Service;
 
@@ -27,13 +29,14 @@ import java.util.List;
 @Service
 public class JobBannerServiceImpl implements IJobBannerService {
 
+    private final SystemGuard systemGuard;
     private final JobBannerMapper bannerMapper;
 
     @Override
     public ListResponse<JobBannerConfigDto> list(String isEnabled, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobBannerConfig> wrapper = QueryBuilder.lambda(JobBannerConfig.class)
             .eq(JobBannerConfig::getTenantId, tenantId);
@@ -54,15 +57,15 @@ public class JobBannerServiceImpl implements IJobBannerService {
 
     @Override
     public JobBannerConfigDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         JobBannerConfig banner = fetchOwned(id);
         return toDto(banner);
     }
 
     @Override
     public JobBannerConfigDto create(BannerRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getTitle() == null || req.getTitle().isEmpty()
             || req.getImageUrl() == null || req.getImageUrl().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -71,7 +74,7 @@ public class JobBannerServiceImpl implements IJobBannerService {
         banner.setTenantId(tenantId);
         banner.setTitle(req.getTitle());
         banner.setImageUrl(req.getImageUrl());
-        banner.setLinkUrl(blankToNull(req.getLinkUrl()));
+        banner.setLinkUrl(ZhiyuStringUtils.blankToNull(req.getLinkUrl()));
         banner.setSortOrder(req.getSortOrder() == null ? 0 : req.getSortOrder());
         banner.setIsEnabled(req.getIsEnabled() == null ? Boolean.TRUE : req.getIsEnabled());
         bannerMapper.insert(banner);
@@ -80,7 +83,7 @@ public class JobBannerServiceImpl implements IJobBannerService {
 
     @Override
     public JobBannerConfigDto update(String id, BannerRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         JobBannerConfig existing = fetchOwned(id);
         if (req.getTitle() == null || req.getTitle().isEmpty()
             || req.getImageUrl() == null || req.getImageUrl().isEmpty()) {
@@ -93,14 +96,14 @@ public class JobBannerServiceImpl implements IJobBannerService {
             : (existing.getIsEnabled() == null || existing.getIsEnabled());
         String linkUrl = req.getLinkUrl() != null ? req.getLinkUrl() : existing.getLinkUrl();
         bannerMapper.updateBanner(id, existing.getTenantId(), req.getTitle(), req.getImageUrl(),
-            blankToNull(linkUrl), sortOrder, isEnabled);
+            ZhiyuStringUtils.blankToNull(linkUrl), sortOrder, isEnabled);
         JobBannerConfig updated = bannerMapper.selectById(id);
         return toDto(updated);
     }
 
     @Override
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         JobBannerConfig existing = fetchOwned(id);
         bannerMapper.deleteBanner(id, existing.getTenantId());
         return id;
@@ -140,30 +143,4 @@ public class JobBannerServiceImpl implements IJobBannerService {
         return dto;
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
-    }
 }

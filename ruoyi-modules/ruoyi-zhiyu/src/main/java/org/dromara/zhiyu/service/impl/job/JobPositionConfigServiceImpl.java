@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.job;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -21,6 +22,7 @@ import org.dromara.zhiyu.mapper.job.JobCareerPositionMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionAbilityBindingMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionCertificateMapper;
 import org.dromara.zhiyu.mapper.job.JobPositionResponsibilityMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobPositionConfigService;
 import org.springframework.stereotype.Service;
 
@@ -42,6 +44,7 @@ import java.util.UUID;
 @Service
 public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
+    private final SystemGuard systemGuard;
     private final JobPositionAbilityBindingMapper bindingMapper;
     private final JobPositionResponsibilityMapper responsibilityMapper;
     private final JobPositionCertificateMapper certificateMapper;
@@ -53,9 +56,9 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
     @Override
     public ListResponse<PositionAbilityBindingDto> listBindings(String careerPositionId, String responsibilityId,
                                                                 long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobPositionAbilityBinding> wrapper = QueryBuilder.lambda(JobPositionAbilityBinding.class)
             .eq(JobPositionAbilityBinding::getTenantId, tenantId)
@@ -74,8 +77,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public PositionAbilityBindingDto createBinding(PositionAbilityRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()
             || req.getResponsibilityId() == null || req.getResponsibilityId().isEmpty()
             || req.getAbilityPointId() == null || req.getAbilityPointId().isEmpty()
@@ -103,9 +106,9 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
         entity.setResponsibilityId(req.getResponsibilityId());
         entity.setAbilityPointId(req.getAbilityPointId());
         entity.setSource(source);
-        entity.setDomain(blankToNull(req.getDomain()));
+        entity.setDomain(ZhiyuStringUtils.blankToNull(req.getDomain()));
         entity.setRequiredLevel(req.getRequiredLevel());
-        entity.setRubricDescription(blankToNull(req.getRubricDescription()));
+        entity.setRubricDescription(ZhiyuStringUtils.blankToNull(req.getRubricDescription()));
         entity.setAttributes(coalesce(req.getAttributes()));
         entity.setWeight(req.getWeight());
         bindingMapper.insert(entity);
@@ -118,7 +121,7 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public PositionAbilityBindingDto updateBinding(String id, PositionAbilityRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         JobPositionAbilityBinding binding = bindingMapper.selectBindingById(id);
         if (binding == null) {
             throw new ApiException(404, "not_found", "绑定不存在");
@@ -155,9 +158,9 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
         update.setResponsibilityId(req.getResponsibilityId());
         update.setAbilityPointId(req.getAbilityPointId());
         update.setSource(source);
-        update.setDomain(blankToNull(domain));
+        update.setDomain(ZhiyuStringUtils.blankToNull(domain));
         update.setRequiredLevel(req.getRequiredLevel());
-        update.setRubricDescription(blankToNull(rubric));
+        update.setRubricDescription(ZhiyuStringUtils.blankToNull(rubric));
         update.setAttributes(coalesce(attributes));
         update.setWeight(weight);
         bindingMapper.updateById(update);
@@ -165,12 +168,12 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
         if (saved == null) {
             throw new ApiException(500, "internal_error", "更新绑定失败");
         }
-        return toBindingDto(saved, resolveAbilityName(saved.getAbilityPointId(), requireTenant()));
+        return toBindingDto(saved, resolveAbilityName(saved.getAbilityPointId(), systemGuard.requireTenant()));
     }
 
     @Override
     public String deleteBinding(String id) {
-        requireUser();
+        systemGuard.requireUser();
         JobPositionAbilityBinding binding = bindingMapper.selectBindingById(id);
         if (binding == null) {
             throw new ApiException(404, "not_found", "绑定不存在");
@@ -188,9 +191,9 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public ListResponse<PositionResponsibilityDto> listResponsibilities(String careerPositionId, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobPositionResponsibility> wrapper = QueryBuilder.lambda(JobPositionResponsibility.class)
             .eq(JobPositionResponsibility::getTenantId, tenantId)
@@ -209,8 +212,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public PositionResponsibilityDto getResponsibility(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobPositionResponsibility item = responsibilityMapper.selectById(id);
         if (item == null) {
             throw new ApiException(404, "not_found", "岗位职责不存在");
@@ -222,7 +225,7 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public PositionResponsibilityDto createResponsibility(PositionResponsibilityRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -237,7 +240,7 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
         entity.setTenantId(positionTenantId);
         entity.setCareerPositionId(req.getCareerPositionId());
         entity.setName(req.getName());
-        entity.setDescription(blankToNull(req.getDescription()));
+        entity.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         entity.setSortOrder(req.getSortOrder() == null ? 0 : req.getSortOrder());
         responsibilityMapper.insert(entity);
         return toResponsibilityDto(entity);
@@ -245,8 +248,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public PositionResponsibilityDto updateResponsibility(String id, PositionResponsibilityRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobPositionResponsibility existing = responsibilityMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "岗位职责不存在");
@@ -274,7 +277,7 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
         update.setTenantId(tenantId);
         update.setCareerPositionId(careerPositionId);
         update.setName(name);
-        update.setDescription(blankToNull(description));
+        update.setDescription(ZhiyuStringUtils.blankToNull(description));
         update.setSortOrder(sortOrder);
         responsibilityMapper.updateById(update);
         JobPositionResponsibility saved = responsibilityMapper.selectById(id);
@@ -283,8 +286,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public String deleteResponsibility(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobPositionResponsibility existing = responsibilityMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "岗位职责不存在");
@@ -298,7 +301,7 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public ListResponse<PositionCertificateDto> listCertificates(String careerPositionId, long limit, long offset) {
-        requireUser();
+        systemGuard.requireUser();
         if (careerPositionId == null || careerPositionId.isEmpty()) {
             return ListResponse.of(new ArrayList<>(), 0);
         }
@@ -308,8 +311,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
             throw new ApiException(404, "not_found", "岗位不存在");
         }
         verifyTenantOwnership(posTenant);
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         long total = certificateMapper.countCertificates(tenantId, careerPositionId);
         List<JobPositionCertificate> rows = certificateMapper.selectCertificates(tenantId, careerPositionId,
@@ -323,16 +326,16 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public PositionCertificateDto getCertificate(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobPositionCertificate item = checkCertTenant(id, tenantId);
         return toCertificateDto(item);
     }
 
     @Override
     public PositionCertificateDto createCertificate(PositionCertificateRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()
             || req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -353,8 +356,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public PositionCertificateDto updateCertificate(String id, PositionCertificateRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobPositionCertificate existing = checkCertTenant(id, tenantId);
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -377,8 +380,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
 
     @Override
     public String deleteCertificate(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         checkCertTenant(id, tenantId);
         certificateMapper.deletePositionCertificate(id);
         return id;
@@ -422,8 +425,8 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
             return libId;
         }
         String newId = UUID.randomUUID().toString();
-        certificateMapper.insertLibrary(newId, tenantId, name, blankToNull(url), blankToNull(description),
-            blankToNull(imageUrl));
+        certificateMapper.insertLibrary(newId, tenantId, name, ZhiyuStringUtils.blankToNull(url), ZhiyuStringUtils.blankToNull(description),
+            ZhiyuStringUtils.blankToNull(imageUrl));
         String saved = certificateMapper.selectLibraryId(tenantId, name);
         return saved == null ? newId : saved;
     }
@@ -479,22 +482,6 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
         return dto;
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
     private void verifyTenantOwnership(String entityTenantId) {
         String tenantId = TenantContext.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
@@ -503,17 +490,6 @@ public class JobPositionConfigServiceImpl implements IJobPositionConfigService {
         if (entityTenantId != null && !entityTenantId.equals(tenantId)) {
             throw new ApiException(403, "forbidden", "无权操作：资源不属于您的租户");
         }
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 
     private List<String> coalesce(List<String> list) {

@@ -14,6 +14,7 @@ import org.dromara.zhiyu.domain.dto.lesson.LessonDtos.KnowledgePointRequest;
 import org.dromara.zhiyu.domain.lesson.KnowledgePoint;
 import org.dromara.zhiyu.mapper.library.LibraryResourceTagRelationMapper;
 import org.dromara.zhiyu.mapper.lesson.KnowledgePointMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonKnowledgePointService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,13 +40,14 @@ public class LessonKnowledgePointServiceImpl implements ILessonKnowledgePointSer
 
     private static final List<String> CITATION_BUCKET_LABELS = List.of("0次", "1-5次", "6-10次", "11-100次", "100次以上");
 
+    private final SystemGuard systemGuard;
     private final KnowledgePointMapper knowledgePointMapper;
     private final LibraryResourceTagRelationMapper tagRelationMapper;
 
     @Override
     public ListResponse<KnowledgePointDto> list(String search, Boolean linked, String creatorId, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         LambdaQueryBuilder<KnowledgePoint> wrapper = QueryBuilder.lambda(KnowledgePoint.class)
@@ -67,15 +69,15 @@ public class LessonKnowledgePointServiceImpl implements ILessonKnowledgePointSer
 
     @Override
     public KnowledgePointDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         return toDto(fetchOwned(id));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KnowledgePointDto create(KnowledgePointRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -90,7 +92,7 @@ public class LessonKnowledgePointServiceImpl implements ILessonKnowledgePointSer
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KnowledgePointDto update(String id, KnowledgePointRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         KnowledgePoint existing = fetchOwned(id);
         String tenantId = existing.getTenantId();
         if (req.getName() == null || req.getName().isEmpty()) {
@@ -107,7 +109,7 @@ public class LessonKnowledgePointServiceImpl implements ILessonKnowledgePointSer
 
     @Override
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         KnowledgePoint existing = fetchOwned(id);
         tagRelationMapper.deleteByResourceGlobal("knowledge_point", id);
         knowledgePointMapper.deleteKnowledgePoint(id, existing.getTenantId());
@@ -116,7 +118,7 @@ public class LessonKnowledgePointServiceImpl implements ILessonKnowledgePointSer
 
     @Override
     public CitationStatsDto citationStats() {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         List<CitationBucketDto> buckets = knowledgePointMapper.citationBuckets(tenantId);
         Map<String, Integer> counts = new LinkedHashMap<>();
         int total = 0;
@@ -141,10 +143,10 @@ public class LessonKnowledgePointServiceImpl implements ILessonKnowledgePointSer
 
     @Override
     public ListResponse<UncitedItemDto> uncited(String startDate, String endDate, long limit, long offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         OffsetDateTime from = parseDateOrNull(startDate);
         OffsetDateTime to = parseDateEndExclusive(endDate);
-        long safeLimit = clampLimit(limit, 20);
+        long safeLimit = systemGuard.clampLimit(limit, 20);
         long safeOffset = Math.max(offset, 0);
         long total = knowledgePointMapper.countUncited(tenantId, from, to);
         List<UncitedItemDto> items = knowledgePointMapper.listUncited(tenantId, from, to, (int) safeLimit, (int) safeOffset);
@@ -210,26 +212,4 @@ public class LessonKnowledgePointServiceImpl implements ILessonKnowledgePointSer
         return parsed == null ? null : parsed.plusDays(1);
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, long defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

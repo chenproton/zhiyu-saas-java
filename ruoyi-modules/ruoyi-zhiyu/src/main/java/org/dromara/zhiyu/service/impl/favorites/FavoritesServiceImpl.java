@@ -46,6 +46,7 @@ import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
 import org.dromara.zhiyu.mapper.portal.PortalScenarioTaskMapper;
 import org.dromara.zhiyu.mapper.portal.PortalViewCounterMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.favorites.IFavoritesService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -82,6 +83,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
     public static final String TYPE_AI_KB = "ai_kb";
     public static final String TYPE_AI_AGENT = "ai_agent";
 
+    private final SystemGuard systemGuard;
     private final ZhiyuUserFavoriteMapper favoriteMapper;
     private final ZhiyuFavoriteCounterMapper counterMapper;
     private final PortalScenarioMapper scenarioMapper;
@@ -101,7 +103,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
 
     @Override
     public FavoriteStatus getFavorite(String targetType, String targetId) {
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         if (!isValidType(targetType)) {
             throw new ApiException(400, "bad_request", "不支持的收藏类型");
         }
@@ -122,7 +124,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public FavoriteStatus toggleFavorite(String targetType, String targetId) {
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         if (!isValidType(targetType)) {
             throw new ApiException(400, "bad_request", "不支持的收藏类型");
         }
@@ -170,7 +172,7 @@ public class FavoritesServiceImpl implements IFavoritesService {
 
     @Override
     public FavoriteListResponse list() {
-        String userId = requireUser();
+        String userId = systemGuard.requireUser();
         String tenantId = TenantContext.getTenantId() == null ? "" : TenantContext.getTenantId();
 
         FavoriteListResponse resp = new FavoriteListResponse();
@@ -643,14 +645,6 @@ public class FavoritesServiceImpl implements IFavoritesService {
         return TYPE_SCENE.equals(targetType) || TYPE_COURSE.equals(targetType)
             || TYPE_QUESTION_BANK.equals(targetType) || TYPE_EXAM.equals(targetType)
             || TYPE_AI_KB.equals(targetType) || TYPE_AI_AGENT.equals(targetType);
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(401, "unauthorized", "请先登录");
-        }
-        return userId;
     }
 
     private Map<String, String> userNameMap(Set<String> ids) {

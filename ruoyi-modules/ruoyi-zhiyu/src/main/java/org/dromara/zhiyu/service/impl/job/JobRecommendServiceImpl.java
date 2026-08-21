@@ -13,6 +13,7 @@ import org.dromara.zhiyu.domain.portal.PortalMajor;
 import org.dromara.zhiyu.mapper.job.JobCareerPositionMapper;
 import org.dromara.zhiyu.mapper.job.JobRecommendationMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobRecommendService;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +32,7 @@ import java.util.List;
 @Service
 public class JobRecommendServiceImpl implements IJobRecommendService {
 
+    private final SystemGuard systemGuard;
     private final JobRecommendationMapper recommendMapper;
     private final JobCareerPositionMapper positionMapper;
     private final PortalMajorMapper majorMapper;
@@ -38,9 +40,9 @@ public class JobRecommendServiceImpl implements IJobRecommendService {
     @Override
     public ListResponse<PositionRecommendationDto> list(String majorId, String careerPositionId,
                                                         long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobRecommendation> wrapper = QueryBuilder.lambda(JobRecommendation.class)
             .eq(JobRecommendation::getTenantId, tenantId)
@@ -60,8 +62,8 @@ public class JobRecommendServiceImpl implements IJobRecommendService {
 
     @Override
     public PositionRecommendationDto get(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobRecommendation rec = recommendMapper.selectRecommendById(id, tenantId);
         if (rec == null) {
             throw new ApiException(404, "not_found", "推荐不存在");
@@ -71,8 +73,8 @@ public class JobRecommendServiceImpl implements IJobRecommendService {
 
     @Override
     public PositionRecommendationDto create(RecommendRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getCareerPositionId() == null || req.getCareerPositionId().isEmpty()
             || req.getPositionType() == null || req.getPositionType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -94,8 +96,8 @@ public class JobRecommendServiceImpl implements IJobRecommendService {
 
     @Override
     public PositionRecommendationDto update(String id, RecommendRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobRecommendation existing = recommendMapper.selectRecommendById(id, tenantId);
         if (existing == null) {
             throw new ApiException(404, "not_found", "推荐不存在");
@@ -115,8 +117,8 @@ public class JobRecommendServiceImpl implements IJobRecommendService {
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobRecommendation existing = recommendMapper.selectRecommendById(id, tenantId);
         if (existing == null) {
             throw new ApiException(404, "not_found", "推荐不存在");
@@ -163,29 +165,6 @@ public class JobRecommendServiceImpl implements IJobRecommendService {
         dto.setCreatedAt(r.getCreatedAt());
         dto.setUpdatedAt(r.getUpdatedAt());
         return dto;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
     }
 
     private String emptyToNull(String s) {

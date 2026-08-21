@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import org.dromara.zhiyu.domain.affairs.TeachingPlanEntry;
 
 import java.math.BigDecimal;
@@ -67,8 +67,8 @@ public interface TeachingPlanEntryMapper extends BaseMapperPlus<TeachingPlanEntr
         @Result(column = "course_id", property = "courseId"),
         @Result(column = "linked_course_name", property = "linkedCourseName"),
         @Result(column = "status", property = "status"),
-        @Result(column = "class_node_ids", property = "classNodeIds", typeHandler = PgArrayTypeHandler.class),
-        @Result(column = "class_names", property = "classNames", typeHandler = PgArrayTypeHandler.class),
+        @Result(column = "class_node_ids", property = "classNodeIds", typeHandler = JsonStringArrayTypeHandler.class),
+        @Result(column = "class_names", property = "classNames", typeHandler = JsonStringArrayTypeHandler.class),
     })
     List<TeachingPlanEntry> selectEntriesByPlan(@Param("planId") String planId, @Param("tenantId") String tenantId);
 

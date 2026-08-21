@@ -37,6 +37,7 @@ import org.dromara.zhiyu.mapper.lesson.LessonGranularCourseImportMapper;
 import org.dromara.zhiyu.mapper.affairs.PeriodSlotMapper;
 import org.dromara.zhiyu.mapper.affairs.TermMapper;
 import org.dromara.zhiyu.mapper.affairs.VenueMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.importexport.IImportExportService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -137,6 +138,7 @@ public class ImportExportServiceImpl implements IImportExportService {
         "questions", "题目导出.xlsx", "exams", "试卷导出.xlsx",
         "organizations", "组织架构导出.xlsx", "students", "学生导出.xlsx", "teachers", "教师导出.xlsx");
 
+    private final SystemGuard systemGuard;
     private final ImportExportMapper mapper;
     private final ScenarioImportMapper scenarioImportMapper;
     private final QuestionImportMapper questionImportMapper;
@@ -155,7 +157,7 @@ public class ImportExportServiceImpl implements IImportExportService {
 
     @Override
     public byte[] buildTemplate(String entity, String bankId, String brandType) {
-        requireTenant();
+        systemGuard.requireTenant();
         String tenantId = TenantContext.getTenantId();
         try (Workbook wb = new XSSFWorkbook()) {
             Styles styles = new Styles(wb);
@@ -451,7 +453,7 @@ public class ImportExportServiceImpl implements IImportExportService {
 
     @Override
     public byte[] exportExcel(String entity, List<String> ids, String bankId) {
-        requireTenant();
+        systemGuard.requireTenant();
         String tenantId = TenantContext.getTenantId();
         if (!EXPORT_FILENAMES.containsKey(entity)) {
             throw new ApiException(400, "bad_request", "不支持的实体");
@@ -808,7 +810,7 @@ public class ImportExportServiceImpl implements IImportExportService {
 
     @Override
     public byte[] exportGeneric(String entity) {
-        requireTenant();
+        systemGuard.requireTenant();
         String tenantId = TenantContext.getTenantId();
         if (!GENERIC_CSV_ENTITIES.contains(entity)) {
             throw new ApiException(400, "bad_request", "不支持的实体");
@@ -832,8 +834,8 @@ public class ImportExportServiceImpl implements IImportExportService {
     public Map<String, Object> importExcel(String entity, MultipartFile file, boolean preview, boolean overwrite,
                                            boolean rename, String bankId, String brandType, String termId,
                                            String programId) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (!EXCEL_IMPORT_ENTITIES.contains(entity)) {
             throw new ApiException(400, "bad_request", "不支持的实体");
         }
@@ -890,8 +892,8 @@ public class ImportExportServiceImpl implements IImportExportService {
 
     private Map<String, Object> importGenericInternal(String entity, MultipartFile file, boolean preview,
                                                       boolean overwrite, boolean rename) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (!GENERIC_CSV_ENTITIES.contains(entity)) {
             throw new ApiException(400, "bad_request", "不支持的实体");
         }
@@ -4304,22 +4306,6 @@ public class ImportExportServiceImpl implements IImportExportService {
             wb.write(out);
             return out.toByteArray();
         }
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
     }
 
     // ---------- POI 样式与写入辅助 ----------

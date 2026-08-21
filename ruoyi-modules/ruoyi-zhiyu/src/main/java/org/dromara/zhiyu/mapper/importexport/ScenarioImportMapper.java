@@ -5,7 +5,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.Map;
  *
  * <p>仅承载导入用 SQL；业务编排在 ImportExportServiceImpl.importScenarios。
  * 全部 SQL 显式携带 {@code tenant_id} 过滤（租户安全红线）。uuid[]/varchar[] 数组列
- * 经 {@link PgArrayTypeHandler} 映射并显式 CAST。</p>
+ * 经 {@link JsonStringArrayTypeHandler} 映射并显式 CAST。</p>
  *
  * @author zhiyu
  */
@@ -33,8 +33,8 @@ public interface ScenarioImportMapper {
 
     /** 覆盖导入：更新场景基础字段（限定租户）。 */
     @Update("UPDATE scenarios SET name = #{name}, career_position_id = #{careerPositionId},"
-        + " industry_ids = #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " profession_ids = #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " industry_ids = #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " profession_ids = #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " batch_id = #{batchId}, difficulty = #{difficulty}, background = #{background}, updated_at = NOW()"
         + " WHERE id = #{id} AND tenant_id = #{tenantId}")
     int updateScenarioImport(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
@@ -57,8 +57,8 @@ public interface ScenarioImportMapper {
     @Insert("INSERT INTO scenarios (id, tenant_id, name, code, career_position_id, industry_ids, profession_ids,"
         + " batch_id, difficulty, version, status, background, creator_id, co_builder_ids)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{code}, #{careerPositionId},"
-        + " #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{industryIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{professionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " #{batchId}, #{difficulty}, 'V1.0', 'draft', #{background}, #{creatorId}, JSON_ARRAY())")
     int insertScenario(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                        @Param("code") String code, @Param("careerPositionId") String careerPositionId,
@@ -73,9 +73,9 @@ public interface ScenarioImportMapper {
         + " resource_ids, eval_data, dependency_ids, is_referenced)"
         + " VALUES (#{id}, #{tenantId}, #{scenarioId}, #{name}, #{code}, #{sortOrder},"
         + " #{background}, #{detailedDescription}, #{estimatedHours}, #{taskType}, #{difficulty},"
-        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
-        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler},"
+        + " #{knowledgePointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{abilityPointIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
+        + " #{resourceIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"
         + " '{}', '{}', false)")
     int insertScenarioTask(@Param("id") String id, @Param("tenantId") String tenantId,
                            @Param("scenarioId") String scenarioId, @Param("name") String name,

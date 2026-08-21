@@ -28,6 +28,7 @@ import org.dromara.zhiyu.mapper.job.JobBatchMapper;
 import org.dromara.zhiyu.mapper.portal.PortalCareerPositionMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
 import org.dromara.zhiyu.mapper.portal.PortalMajorMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.affairs.ITrainingProgramService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +56,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     private static final String CODE_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    private final SystemGuard systemGuard;
     private final TrainingProgramMapper programMapper;
     private final TrainingProgramCourseMapper courseMapper;
     private final PortalMajorMapper majorMapper;
@@ -67,7 +69,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
 
     @Override
     public ListResponse<TrainingProgramDto> list(String search, String status, String majorId, long limit, long offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         long safeLimit = clampLimit(limit);
         long safeOffset = Math.max(offset, 0);
 
@@ -94,8 +96,8 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
 
     @Override
     public TrainingProgramDto create(TrainingProgramPayload p) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (p.getName() == null || p.getName().isEmpty() || p.getEntryYear() == null || p.getEntryYear() <= 0) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -120,7 +122,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
 
     @Override
     public TrainingProgramDto update(String id, TrainingProgramPayload p) {
-        requireUser();
+        systemGuard.requireUser();
         TrainingProgram existing = fetchOwned(id);
         if (p.getName() != null && !p.getName().isEmpty()) {
             existing.setName(p.getName());
@@ -157,7 +159,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchOwned(id);
         programMapper.deleteById(id);
         return id;
@@ -206,7 +208,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto review(String id, ReviewRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         String to;
         if ("approved".equals(req.getStatus())) {
             to = "approved";
@@ -216,7 +218,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
             throw new ApiException(400, "bad_request", "无效的审核状态");
         }
         TrainingProgram program = fetchOwnedAction(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         int rows = programMapper.casReview(id, tenantId, to);
         if (rows == 0) {
             throw new ApiException(400, "bad_request", "人培方案不存在或不在待处理状态");
@@ -226,12 +228,12 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
 
     @Override
     public TrainingProgramDto invite(String id, InviteRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         fetchOwnedAction(id);
         if (req.getUserId() == null || req.getUserId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少用户ID");
         }
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         ZhiyuUser user = userMapper.selectById(req.getUserId());
         if (user == null || !tenantId.equals(user.getTenantId())) {
             throw new ApiException(400, "bad_request", "用户不存在或不属于本租户");
@@ -244,7 +246,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
 
     @Override
     public ListResponse<TrainingProgramCourseDto> listCourses(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         fetchOwned(id);
         List<TrainingProgramCourse> rows = courseMapper.selectList(
             QueryBuilder.lambda(TrainingProgramCourse.class)
@@ -256,7 +258,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ListResponse<TrainingProgramCourseDto> putCourses(String id, PutProgramCoursesRequest req) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchOwned(id);
         List<ProgramCoursePayload> list = req.getCourses() == null ? List.of() : req.getCourses();
 
@@ -315,8 +317,8 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TrainingProgramDto clone(String id, CloneRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         TrainingProgram src = fetchOwned(id);
         String newName = req != null && req.getName() != null && !req.getName().isEmpty()
             ? req.getName() : src.getName() + " (克隆)";
@@ -458,9 +460,9 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     // ---------- 状态流转 ----------
 
     private TrainingProgramDto transition(String id, String toStatus) {
-        requireUser();
+        systemGuard.requireUser();
         TrainingProgram program = fetchOwnedAction(id);
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         String current = program.getStatus();
         if (!ContentActionSupport.canTransition(current, toStatus)) {
             throw new ApiException(409, "conflict", "当前状态不允许该操作（training_program）");
@@ -478,7 +480,7 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
     // ---------- 工具 ----------
 
     private TrainingProgram fetchOwned(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         TrainingProgram program = programMapper.selectOne(QueryBuilder.lambda(TrainingProgram.class)
             .eq(TrainingProgram::getId, id).eq(TrainingProgram::getTenantId, tenantId).build());
         if (program == null) {
@@ -561,19 +563,4 @@ public class TrainingProgramServiceImpl implements ITrainingProgramService {
         return s == null || s.isEmpty() ? null : s;
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

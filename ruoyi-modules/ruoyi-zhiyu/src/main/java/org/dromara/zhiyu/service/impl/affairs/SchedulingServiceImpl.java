@@ -51,6 +51,7 @@ import org.dromara.zhiyu.mapper.portal.PortalScenarioMapper;
 import org.dromara.zhiyu.mapper.affairs.TermMapper;
 import org.dromara.zhiyu.mapper.portal.PortalUserRoleMapper;
 import org.dromara.zhiyu.mapper.affairs.VenueMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.affairs.ISchedulingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,6 +82,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     };
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
+    private final SystemGuard systemGuard;
     private final VenueMapper venueMapper;
     private final PeriodSlotMapper periodSlotMapper;
     private final AffairsScheduleMapper scheduleMapper;
@@ -97,8 +99,8 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public ListResponse<VenueDto> listVenues(String search, String type, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<Venue> wrapper = QueryBuilder.lambda(Venue.class)
             .eq(Venue::getTenantId, tenantId)
@@ -117,7 +119,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public VenueDto createVenue(VenuePayload p) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (p.getName() == null || p.getName().isEmpty() || p.getType() == null || p.getType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -132,7 +134,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public VenueDto updateVenue(String id, VenuePayload p) {
-        requireTenant();
+        systemGuard.requireTenant();
         Venue venue = fetchVenue(id);
         if (p.getName() == null || p.getName().isEmpty() || p.getType() == null || p.getType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -147,7 +149,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteVenue(String id) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchVenue(id);
         venueMapper.deleteById(id);
         return id;
@@ -157,8 +159,8 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public ListResponse<PeriodSlotDto> listPeriodSlots(long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<PeriodSlot> wrapper = QueryBuilder.lambda(PeriodSlot.class)
             .eq(PeriodSlot::getTenantId, tenantId);
@@ -175,7 +177,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public PeriodSlotDto createPeriodSlot(PeriodSlotPayload p) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (p.getName() == null || p.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -192,7 +194,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public PeriodSlotDto updatePeriodSlot(String id, PeriodSlotPayload p) {
-        requireTenant();
+        systemGuard.requireTenant();
         PeriodSlot slot = fetchPeriodSlot(id);
         if (p.getName() == null || p.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -209,7 +211,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deletePeriodSlot(String id) {
-        requireTenant();
+        systemGuard.requireTenant();
         fetchPeriodSlot(id);
         periodSlotMapper.deleteById(id);
         return id;
@@ -218,7 +220,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ListResponse<PeriodSlotDto> replacePeriodSlots(ReplacePeriodSlotsRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         List<PeriodSlotPayload> items = req.getItems() == null ? List.of() : req.getItems();
         if (items.isEmpty()) {
             throw new ApiException(400, "bad_request", "节次列表不能为空");
@@ -268,8 +270,8 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     public ListResponse<ScheduleEntryDto> listSchedules(String termId, String status, String classNodeId, String teacherId,
                                                         String type, long limit, long offset) {
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 200);
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 200);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<ScheduleEntry> wrapper = QueryBuilder.lambda(ScheduleEntry.class)
             .eq(ScheduleEntry::getTenantId, tenantId)
@@ -291,8 +293,8 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ScheduleEntryDto createSchedule(ScheduleEntryPayload p) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         return doCreate(p, tenantId);
     }
 
@@ -329,7 +331,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ScheduleEntryDto updateSchedule(String id, ScheduleEntryPayload p) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (fetchSchedule(id) == null) {
             throw new ApiException(404, "not_found", "排课记录不存在");
         }
@@ -352,7 +354,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deleteSchedule(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         ScheduleEntry entry = fetchSchedule(id);
         if (entry == null) {
             throw new ApiException(404, "not_found", "排课记录不存在");
@@ -367,7 +369,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> publishSchedules(PublishSchedulesRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getTermId() == null || req.getTermId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段 termId");
         }
@@ -383,7 +385,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public TimetableResponse timetable(String termId, String classNodeId, String teacherId, String status) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if ((classNodeId == null || classNodeId.isEmpty()) && (teacherId == null || teacherId.isEmpty())) {
             throw new ApiException(400, "bad_request", "缺少 classNodeId 或 teacherId 参数");
         }
@@ -418,7 +420,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> autoSchedule(AutoScheduleRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getTermId() == null || req.getTermId().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段 termId");
         }
@@ -696,7 +698,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
 
     @Override
     public ExcelExport exportSchedules(String termId) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (termId == null || termId.isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少 termId 参数");
         }
@@ -989,13 +991,13 @@ public class SchedulingServiceImpl implements ISchedulingService {
     }
 
     private ScheduleEntry fetchSchedule(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         return scheduleMapper.selectOne(QueryBuilder.lambda(ScheduleEntry.class)
             .eq(ScheduleEntry::getId, id).eq(ScheduleEntry::getTenantId, tenantId).build());
     }
 
     private Venue fetchVenue(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         Venue venue = venueMapper.selectOne(QueryBuilder.lambda(Venue.class)
             .eq(Venue::getId, id).eq(Venue::getTenantId, tenantId).build());
         if (venue == null) {
@@ -1005,7 +1007,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
     }
 
     private PeriodSlot fetchPeriodSlot(String id) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         PeriodSlot slot = periodSlotMapper.selectOne(QueryBuilder.lambda(PeriodSlot.class)
             .eq(PeriodSlot::getId, id).eq(PeriodSlot::getTenantId, tenantId).build());
         if (slot == null) {
@@ -1104,13 +1106,6 @@ public class SchedulingServiceImpl implements ISchedulingService {
         return style;
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
     private boolean notEmpty(String s) {
         return s != null && !s.isEmpty();
     }
@@ -1119,19 +1114,4 @@ public class SchedulingServiceImpl implements ISchedulingService {
         return s == null || s.isEmpty() ? null : s;
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

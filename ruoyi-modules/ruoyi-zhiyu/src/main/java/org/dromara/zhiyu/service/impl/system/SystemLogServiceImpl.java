@@ -33,7 +33,7 @@ public class SystemLogServiceImpl implements ISystemLogService {
     @Override
     public ListResponse<SystemLoginLog> loginLogs(String userId, String status, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemLoginLog> wrapper = QueryBuilder.lambda(SystemLoginLog.class)
             .eq(SystemLoginLog::getTenantId, tenantId);
         if (userId != null && !userId.isBlank()) {
@@ -51,7 +51,7 @@ public class SystemLogServiceImpl implements ISystemLogService {
     @Override
     public ListResponse<SystemOperationLog> operationLogs(String userId, String module, String action, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemOperationLog> wrapper = QueryBuilder.lambda(SystemOperationLog.class)
             .eq(SystemOperationLog::getTenantId, tenantId);
         if (userId != null && !userId.isBlank()) {
@@ -84,10 +84,4 @@ public class SystemLogServiceImpl implements ISystemLogService {
         }
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

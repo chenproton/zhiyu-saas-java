@@ -18,6 +18,7 @@ import org.dromara.zhiyu.domain.lesson.LessonBehaviorRecord;
 import org.dromara.zhiyu.mapper.ZhiyuUserMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonBehaviorRecordMapper;
 import org.dromara.zhiyu.mapper.lesson.LessonCourseMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.lesson.ILessonBehaviorService;
 import org.springframework.stereotype.Service;
 
@@ -38,14 +39,15 @@ import java.util.Map;
 @Service
 public class LessonBehaviorServiceImpl implements ILessonBehaviorService {
 
+    private final SystemGuard systemGuard;
     private final LessonBehaviorRecordMapper behaviorMapper;
     private final LessonCourseMapper courseMapper;
     private final ZhiyuUserMapper userMapper;
 
     @Override
     public BehaviorAggregateDto aggregate(String courseId, String startDate, String endDate) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         BehaviorAggregateDto agg = new BehaviorAggregateDto();
         agg.setSignIn(new SignInSummaryDto());
         if (isBlank(courseId)) {
@@ -61,8 +63,8 @@ public class LessonBehaviorServiceImpl implements ILessonBehaviorService {
 
     @Override
     public BehaviorRecordDto create(CreateBehaviorRecordRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (isBlank(req.getCourseId()) || isBlank(req.getStudentUserId())) {
             throw new ApiException(400, "bad_request", "缺少课程ID或学生用户ID");
         }
@@ -304,19 +306,4 @@ public class LessonBehaviorServiceImpl implements ILessonBehaviorService {
         return s == null || s.isBlank();
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

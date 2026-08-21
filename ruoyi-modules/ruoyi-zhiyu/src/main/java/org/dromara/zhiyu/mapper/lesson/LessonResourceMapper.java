@@ -134,6 +134,6 @@ public interface LessonResourceMapper extends BaseMapperPlus<SystemCourseNode, S
 
     /** 校验资源归属当前租户（节点引用校验用）。 */
     @Select("<script>SELECT COUNT(*) FROM resource_library WHERE tenant_id = #{tenantId}"
-        + " AND JSON_CONTAINS(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')</script>")
+        + " AND JSON_CONTAINS(CAST(#{ids, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler} AS JSON), JSON_QUOTE(id), '$')</script>")
     long countResourcesInTenant(@Param("tenantId") String tenantId, @Param("ids") List<String> ids);
 }

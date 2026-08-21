@@ -30,7 +30,7 @@ public class SystemOrgTypeServiceImpl implements ISystemOrgTypeService {
     @Override
     public ListResponse<SystemOrgType> list(String search, String category, long limit, long offset) {
         String tenantId = guard.requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = guard.clampLimit(limit, 50);
         LambdaQueryBuilder<SystemOrgType> wrapper = QueryBuilder.lambda(SystemOrgType.class)
             .eq(SystemOrgType::getTenantId, tenantId);
         if (category != null && !category.isBlank()) {
@@ -116,10 +116,4 @@ public class SystemOrgTypeServiceImpl implements ISystemOrgTypeService {
         return s == null || s.isBlank();
     }
 
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
 }

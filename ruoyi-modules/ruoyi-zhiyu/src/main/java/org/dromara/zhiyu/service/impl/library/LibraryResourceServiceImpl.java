@@ -17,6 +17,7 @@ import org.dromara.zhiyu.domain.dto.library.LibraryDtos.UpdateResourceRequest;
 import org.dromara.zhiyu.domain.library.LibraryResource;
 import org.dromara.zhiyu.mapper.library.LibraryResourceMapper;
 import org.dromara.zhiyu.mapper.library.LibraryResourceTagRelationMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.library.ILibraryResourceService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final LibraryResourceMapper resourceMapper;
     private final LibraryResourceTagRelationMapper tagRelationMapper;
 
@@ -65,7 +67,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
     public ListResponse<ResourceLibraryItemDto> list(String search, String resourceType, String orgName,
                                                      String majorName, String uploadedBy, String tagIds,
                                                      int limit, int offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         long safeLimit = clampLimit(limit, DEFAULT_LIMIT);
         long safeOffset = Math.max(offset, 0);
         String pattern = toLikePattern(search);
@@ -81,15 +83,15 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
 
     @Override
     public ResourceLibraryItemDto get(String id) {
-        requireUser();
+        systemGuard.requireUser();
         LibraryResource item = fetchOwned(id);
         return toDto(item);
     }
 
     @Override
     public ResourceLibraryItemDto create(CreateResourceRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()
             || req.getResourceType() == null || req.getResourceType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少名称或资源类型");
@@ -106,7 +108,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
 
     @Override
     public ResourceLibraryItemDto update(String id, UpdateResourceRequest req) {
-        requireUser();
+        systemGuard.requireUser();
         LibraryResource existing = fetchOwned(id);
         String name = req.getName() != null ? req.getName() : existing.getName();
         String resourceType = req.getResourceType() != null ? req.getResourceType() : existing.getResourceType();
@@ -127,7 +129,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String delete(String id) {
-        requireUser();
+        systemGuard.requireUser();
         fetchOwned(id);
         tagRelationMapper.deleteByResourceGlobal("resource_library", id);
         resourceMapper.deleteResource(id);
@@ -136,13 +138,13 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
 
     @Override
     public List<ResourceTypeCountDto> stats(String search) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         return resourceMapper.countByType(tenantId, toLikePattern(search));
     }
 
     @Override
     public CitationStatsDto citationStats(String resourceType) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         List<CitationBucketDto> buckets = resourceMapper.citationBuckets(tenantId, resourceType);
         Map<String, Integer> counts = new java.util.HashMap<>();
         int total = 0;
@@ -168,7 +170,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
     @Override
     public ListResponse<UncitedItemDto> uncited(String resourceType, String startDate, String endDate,
                                                 int limit, int offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         OffsetDateTime from = parseDateOrNull(startDate);
         OffsetDateTime to = parseDateEndExclusive(endDate);
         long safeLimit = clampLimit(limit, 20);
@@ -182,7 +184,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
 
     @Override
     public ListResponse<ResourceLibraryItemDto> previewImport(PreviewImportRequest req) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         if (req.getNames() == null || req.getNames().isEmpty()
             || req.getResourceType() == null || req.getResourceType().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少名称或资源类型");
@@ -299,19 +301,4 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
         return Math.min(limit, 200);
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
 }

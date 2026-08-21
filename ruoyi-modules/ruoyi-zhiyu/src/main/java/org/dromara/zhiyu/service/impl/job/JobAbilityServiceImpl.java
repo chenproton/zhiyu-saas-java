@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.job;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -13,6 +14,7 @@ import org.dromara.zhiyu.domain.dto.job.JobDtos.CitationStatsDto;
 import org.dromara.zhiyu.domain.dto.job.JobDtos.UncitedItemDto;
 import org.dromara.zhiyu.domain.job.JobAbilityPoint;
 import org.dromara.zhiyu.mapper.job.JobAbilityPointMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobAbilityService;
 import org.springframework.stereotype.Service;
 
@@ -46,14 +48,15 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
     private static final List<String> BUCKET_LABELS =
         List.of("0次", "1-5次", "6-10次", "11-100次", "100次以上");
 
+    private final SystemGuard systemGuard;
     private final JobAbilityPointMapper abilityMapper;
 
     @Override
     public ListResponse<AbilityPointDto> list(String search, String isPublic, String creatorId,
                                               long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
 
         LambdaQueryBuilder<JobAbilityPoint> wrapper = QueryBuilder.lambda(JobAbilityPoint.class)
@@ -79,8 +82,8 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
 
     @Override
     public AbilityPointDto get(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobAbilityPoint point = abilityMapper.selectById(id);
         if (point == null) {
             throw new ApiException(404, "not_found", "能力点不存在");
@@ -91,8 +94,8 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
 
     @Override
     public AbilityPointDto create(AbilityRequest req) {
-        String tenantId = requireTenant();
-        String userId = requireUser();
+        String tenantId = systemGuard.requireTenant();
+        String userId = systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
@@ -102,7 +105,7 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
         JobAbilityPoint point = new JobAbilityPoint();
         point.setTenantId(tenantId);
         point.setName(req.getName());
-        point.setDescription(blankToNull(req.getDescription()));
+        point.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         point.setAttributes(coalesce(req.getAttributes()));
         point.setIsPublic(req.getIsPublic() == null ? Boolean.FALSE : req.getIsPublic());
         point.setCreatorId(userId);
@@ -113,8 +116,8 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
 
     @Override
     public AbilityPointDto update(String id, AbilityRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobAbilityPoint existing = abilityMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "能力点不存在");
@@ -129,7 +132,7 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
         JobAbilityPoint update = new JobAbilityPoint();
         update.setId(id);
         update.setName(req.getName());
-        update.setDescription(blankToNull(req.getDescription()));
+        update.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         update.setAttributes(coalesce(req.getAttributes()));
         update.setIsPublic(req.getIsPublic() == null ? Boolean.FALSE : req.getIsPublic());
         abilityMapper.updateById(update);
@@ -138,8 +141,8 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobAbilityPoint existing = abilityMapper.selectById(id);
         if (existing == null) {
             throw new ApiException(404, "not_found", "能力点不存在");
@@ -151,7 +154,7 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
 
     @Override
     public CitationStatsDto citationStats() {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         Map<String, Integer> counts = new LinkedHashMap<>();
         int total = 0;
         for (JobAbilityPointMapper.CitationCountRow row : abilityMapper.selectCitationStats(tenantId)) {
@@ -176,13 +179,13 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
 
     @Override
     public ListResponse<UncitedItemDto> uncited(String startDate, String endDate, long limit, long offset) {
-        String tenantId = requireTenant();
+        String tenantId = systemGuard.requireTenant();
         OffsetDateTime from = parseDate(startDate);
         OffsetDateTime to = parseDate(endDate);
         if (to != null) {
             to = to.plusDays(1);
         }
-        long safeLimit = clampLimit(limit, 50);
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         long total = abilityMapper.countUncited(tenantId, from, to);
         List<JobAbilityPoint> rows = abilityMapper.selectUncited(tenantId, from, to,
@@ -252,22 +255,6 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
         }
     }
 
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
     private void verifyTenantOwnership(String entityTenantId) {
         String tenantId = TenantContext.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
@@ -276,17 +263,6 @@ public class JobAbilityServiceImpl implements IJobAbilityService {
         if (entityTenantId != null && !entityTenantId.equals(tenantId)) {
             throw new ApiException(403, "forbidden", "无权操作：资源不属于您的租户");
         }
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 
     private List<String> coalesce(List<String> list) {

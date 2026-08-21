@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -12,6 +13,7 @@ import org.dromara.zhiyu.domain.dto.job.JobDtos.LearnRoadDto;
 import org.dromara.zhiyu.domain.dto.job.JobDtos.LearnRoadRequest;
 import org.dromara.zhiyu.domain.job.JobLearnRoad;
 import org.dromara.zhiyu.mapper.job.JobLearnRoadMapper;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.dromara.zhiyu.service.job.IJobLearnRoadService;
 import org.springframework.stereotype.Service;
 
@@ -35,13 +37,14 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
 
+    private final SystemGuard systemGuard;
     private final JobLearnRoadMapper learnRoadMapper;
 
     @Override
     public ListResponse<LearnRoadDto> list(String name, long limit, long offset) {
-        requireUser();
-        String tenantId = requireTenant();
-        long safeLimit = clampLimit(limit, 50);
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
+        long safeLimit = systemGuard.clampLimit(limit, 50);
         long safeOffset = Math.max(offset, 0);
         LambdaQueryBuilder<JobLearnRoad> wrapper = QueryBuilder.lambda(JobLearnRoad.class)
             .eq(JobLearnRoad::getTenantId, tenantId);
@@ -61,23 +64,23 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
 
     @Override
     public LearnRoadDto get(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobLearnRoad road = fetchOwned(id, tenantId);
         return toDto(road);
     }
 
     @Override
     public LearnRoadDto create(LearnRoadRequest req) {
-        String tenantId = requireTenant();
-        requireUser();
+        String tenantId = systemGuard.requireTenant();
+        systemGuard.requireUser();
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
         }
         JobLearnRoad road = new JobLearnRoad();
         road.setTenantId(tenantId);
         road.setName(req.getName());
-        road.setDescription(blankToNull(req.getDescription()));
+        road.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         road.setPositionIds(coalesce(req.getPositionIds()));
         road.setSteps(toJson(req.getSteps()));
         learnRoadMapper.insert(road);
@@ -86,8 +89,8 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
 
     @Override
     public LearnRoadDto update(String id, LearnRoadRequest req) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         JobLearnRoad existing = fetchOwned(id, tenantId);
         if (req.getName() == null || req.getName().isEmpty()) {
             throw new ApiException(400, "bad_request", "缺少必填字段");
@@ -96,15 +99,15 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
         String description = req.getDescription() != null ? req.getDescription() : existing.getDescription();
         List<String> positionIds = req.getPositionIds() != null ? req.getPositionIds() : existing.getPositionIds();
         String steps = req.getSteps() != null ? toJson(req.getSteps()) : existing.getSteps();
-        learnRoadMapper.updateLearnRoad(id, tenantId, req.getName(), blankToNull(description), positionIds, steps);
+        learnRoadMapper.updateLearnRoad(id, tenantId, req.getName(), ZhiyuStringUtils.blankToNull(description), positionIds, steps);
         JobLearnRoad updated = fetchOwned(id, tenantId);
         return toDto(updated);
     }
 
     @Override
     public String delete(String id) {
-        requireUser();
-        String tenantId = requireTenant();
+        systemGuard.requireUser();
+        String tenantId = systemGuard.requireTenant();
         fetchOwned(id, tenantId);
         learnRoadMapper.deleteLearnRoad(id, tenantId);
         return id;
@@ -156,33 +159,6 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
         } catch (Exception e) {
             return new ArrayList<>();
         }
-    }
-
-    private String requireUser() {
-        String userId = TenantContext.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new ApiException(403, "forbidden", "权限不足");
-        }
-        return userId;
-    }
-
-    private String requireTenant() {
-        String tenantId = TenantContext.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new ApiException(403, "forbidden", "缺少租户信息");
-        }
-        return tenantId;
-    }
-
-    private long clampLimit(long limit, int defaultLimit) {
-        if (limit <= 0) {
-            return defaultLimit;
-        }
-        return Math.min(limit, 200);
-    }
-
-    private String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 
     private List<String> coalesce(List<String> list) {

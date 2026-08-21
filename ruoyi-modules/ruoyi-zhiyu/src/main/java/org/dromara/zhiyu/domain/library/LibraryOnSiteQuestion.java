@@ -6,15 +6,15 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.util.List;
 
 /**
  * 现场题库题目（on_site_question_library 表）。
  *
- * <p>knowledge_point_ids 为 uuid[]、tags 为 text[]，均经 {@link PgArrayTypeHandler}
+ * <p>knowledge_point_ids 为 uuid[]、tags 为 text[]，均经 {@link JsonStringArrayTypeHandler}
  * 与 List&lt;String&gt; 互转（读写一致，对齐 Go 版 JSONSliceToStrings 语义）。</p>
  *
  * @author zhiyu
@@ -44,11 +44,11 @@ public class LibraryOnSiteQuestion extends BaseZhiyuEntity {
     private String difficulty;
 
     /** 关联知识点 ID（uuid[]） */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> knowledgePointIds;
 
     /** 标签（text[]） */
-    @TableField(typeHandler = PgArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> tags;
 
     /** 创建人用户 ID */

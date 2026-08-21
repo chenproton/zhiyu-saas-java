@@ -8,8 +8,8 @@ import lombok.EqualsAndHashCode;
 import org.dromara.zhiyu.core.domain.BaseZhiyuEntity;
 import org.dromara.zhiyu.core.mybatis.JsonArrayTypeHandler;
 import org.dromara.zhiyu.core.mybatis.JsonMapTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgArrayTypeHandler;
-import org.dromara.zhiyu.core.mybatis.PgUuidArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
+import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 
 import java.util.List;
 import java.util.Map;
@@ -91,7 +91,7 @@ public class ZhiyuTenant extends BaseZhiyuEntity {
     private String educationNature;
 
     /** 管理员用户 ID 数组（uuid[]） */
-    @TableField(typeHandler = PgUuidArrayTypeHandler.class)
+    @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> adminIds;
 
     /** 有效期起（YYYY-MM-DD，空为不限） */
