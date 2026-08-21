@@ -397,7 +397,7 @@ export function useScenarioTasks<S extends { careerPositionId?: string }>(adapte
       try {
         if (key === 'knowledge') {
           const kps = await adapter.fetchKnowledgePoints();
-          knowledgePoints.value = kps.map((kp: any) => ({
+          const freshKps: KnowledgePointItem[] = kps.map((kp: any) => ({
             id: kp.id,
             name: kp.name,
             code: kp.code,
@@ -405,6 +405,16 @@ export function useScenarioTasks<S extends { careerPositionId?: string }>(adapte
             linked: true,
             granularLessons: kp.granularLessonIds || kp.granularLessons || []
           }));
+          // 保留本会话新增/克隆的自定义知识点（kp-custom-* 尚未落库，后端拉不到）
+          const seenKp = new Set(freshKps.map((k) => k.id));
+          const mergedKps = [...freshKps];
+          for (const k of knowledgePoints.value) {
+            if (customKnowledgePointIds.value.has(k.id) && !seenKp.has(k.id)) {
+              mergedKps.push(k);
+              seenKp.add(k.id);
+            }
+          }
+          knowledgePoints.value = mergedKps;
         } else if (key === 'ability') {
           const aps = await adapter.fetchAbilityPoints();
           abilityPoints.value = aps.map((ap: any) => ({
@@ -422,7 +432,7 @@ export function useScenarioTasks<S extends { careerPositionId?: string }>(adapte
           }
         } else if (key === 'resources') {
           const resources = await adapter.fetchResources();
-          learningResources.value = resources.map((r: any) => ({
+          const freshRes: ResourceItem[] = resources.map((r: any) => ({
             id: r.id,
             name: r.name,
             type: r.resourceType || r.type,
@@ -430,6 +440,16 @@ export function useScenarioTasks<S extends { careerPositionId?: string }>(adapte
             description: r.description,
             size: r.fileSize !== undefined ? String(r.fileSize) : r.size
           }));
+          // 保留本会话上传/新建的自定义资源（res-* 尚未落库，后端拉不到）
+          const seenRes = new Set(freshRes.map((r) => r.id));
+          const mergedRes = [...freshRes];
+          for (const r of learningResources.value) {
+            if (customResourceIds.value.has(r.id) && !seenRes.has(r.id)) {
+              mergedRes.push(r);
+              seenRes.add(r.id);
+            }
+          }
+          learningResources.value = mergedRes;
         } else if (key === 'clone') {
           const { scenarios, tasks: cloneTaskItems } = await adapter.fetchClonePool();
           const nameMap = new Map<string, string>();
@@ -778,6 +798,17 @@ export function useScenarioTasks<S extends { careerPositionId?: string }>(adapte
   }
 
   function onKnowledgeChange(taskId: string, items: KnowledgePointItem[]) {
+    // 新增/克隆的知识点以 kp-custom-* 临时 ID 下发：并入知识点池并登记，
+    // 保存时 prepareStatesForSave 落库并替换临时 ID（对齐课程编辑侧 KnowledgeSelector）
+    for (const item of items) {
+      if (item.id.startsWith('kp-custom-') && !knowledgePoints.value.some((k) => k.id === item.id)) {
+        knowledgePoints.value = [
+          ...knowledgePoints.value,
+          { ...item, linked: false, granularLessons: item.granularLessons || [] }
+        ];
+        customKnowledgePointIds.value = new Set([...customKnowledgePointIds.value, item.id]);
+      }
+    }
     const ids = items.map((i) => i.id);
     knowledgePoints.value = knowledgePoints.value.map((k) => {
       const item = items.find((i) => i.id === k.id);
@@ -793,6 +824,21 @@ export function useScenarioTasks<S extends { careerPositionId?: string }>(adapte
       return k;
     });
     updateState(taskId, { knowledgePoints: ids });
+  }
+
+  /** 任务资源：弹窗内上传/新建资源后并入资源池并登记，保存时落库并替换临时 ID */
+  function onResourceUpload(resource: ResourceItem) {
+    if (!learningResources.value.some((r) => r.id === resource.id)) {
+      learningResources.value = [...learningResources.value, resource];
+    }
+    if (resource.id.startsWith('res-')) {
+      customResourceIds.value = new Set([...customResourceIds.value, resource.id]);
+    }
+  }
+
+  /** 任务资源：选择变更（含临时 res-* ID），写入任务状态 */
+  function onResourcesChange(taskId: string, ids: string[]) {
+    updateState(taskId, { resources: ids });
   }
 
   function onEvalMethodsChange(taskId: string, newMethods: string[]) {
@@ -1058,6 +1104,8 @@ export function useScenarioTasks<S extends { careerPositionId?: string }>(adapte
     openCard,
     selectedKnowledgeItems,
     onKnowledgeChange,
+    onResourceUpload,
+    onResourcesChange,
     onEvalMethodsChange,
     handleCardSave,
     toggleCloneSelect,

@@ -207,7 +207,8 @@
             v-else-if="editingCard.type === 'resources'"
             :pool="resourcePool"
             :selected-ids="currentState.resources"
-            @change="(ids) => updateState(editingCard!.taskId, { resources: ids })"
+            @change="(ids) => onResourcesChange(editingCard!.taskId, ids)"
+            @upload="onResourceUpload"
           />
 
           <!-- evaluation -->
@@ -385,9 +386,11 @@ import {
 } from '../partner/co-build-scene-tasks/tasks-logic';
 import TaskInfoCard from '../partner/co-build-scene-tasks/TaskInfoCard.vue';
 import EvalMethodSelector from '../partner/co-build-scene-tasks/EvalMethodSelector.vue';
-import KnowledgeSelector from '../partner/co-build-scene-tasks/KnowledgeSelector.vue';
+// 知识点/资源选择器复用课程编辑侧全功能组件（支持新增/克隆/引用、上传新建），
+// 对齐功能清单「从知识点库引用/克隆/新增」「任务资源 11 类差异化配置」
+import KnowledgeSelector from '../lesson/knowledge-selector.vue';
 import AbilitySelector from '../partner/co-build-scene-tasks/AbilitySelector.vue';
-import ResourceSelector from '../partner/co-build-scene-tasks/ResourceSelector.vue';
+import ResourceSelector from '../lesson/resource-selector.vue';
 import DescriptionEditor from '../lesson/description-editor.vue';
 import EvaluationRulesEditor from './evaluation-rules/EvaluationRulesEditor.vue';
 import { useScenarioTasks, type ApiTask } from '../partner/co-build-scene-tasks/use-scenario-tasks';
@@ -549,6 +552,8 @@ const {
   openCard,
   selectedKnowledgeItems,
   onKnowledgeChange,
+  onResourceUpload,
+  onResourcesChange,
   onEvalMethodsChange,
   handleCardSave,
   toggleCloneSelect,
