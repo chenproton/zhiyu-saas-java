@@ -267,17 +267,39 @@ const activeStyle = (index: number) => {
 };
 
 const highlightText = (text: string) => {
-  if (!text || !state.menuQuery) {
-    return text;
+  if (!text) {
+    return '';
+  }
+  if (!state.menuQuery) {
+    return escapeHtml(text);
   }
 
-  const escapedKeyword = escapeRegExp(state.menuQuery);
-  const reg = new RegExp(`(${escapedKeyword})`, 'gi');
-  return text.replace(reg, '<span class="highlight">$1</span>');
+  // 先在原文上定位匹配位置，再分段转义拼接，避免关键词与 HTML 实体互相干扰
+  const reg = new RegExp(escapeRegExp(state.menuQuery), 'gi');
+  let result = '';
+  let lastIndex = 0;
+  for (const match of text.matchAll(reg)) {
+    result += escapeHtml(text.slice(lastIndex, match.index));
+    result += `<span class="highlight">${escapeHtml(match[0])}</span>`;
+    lastIndex = match.index + match[0].length;
+  }
+  result += escapeHtml(text.slice(lastIndex));
+  return result;
 };
 
 const escapeRegExp = (value: string) => {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+const escapeHtml = (value: string) => {
+  const htmlEscapeMap: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return value.replace(/[&<>"']/g, ch => htmlEscapeMap[ch]);
 };
 
 watch(
