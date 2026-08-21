@@ -522,6 +522,9 @@ onMounted(async () => {
 }
 </style>
 
+<!-- 本文件内 CoverUpload / MultiImageUpload 是用 h() 渲染函数定义的局部组件，
+     其内部元素不会带上本组件的 scoped data-v 属性，scoped 样式无法命中，
+     因此这段样式必须保持全局（类名 cover-* / multi-* 仅此处使用）。 -->
 <style>
 .cover-wrap { width: 100%; }
 .cover-preview { position: relative; }

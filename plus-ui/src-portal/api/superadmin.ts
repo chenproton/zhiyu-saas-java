@@ -244,25 +244,7 @@ export async function fetchThemeColor(tenantId?: string): Promise<string> {
   }
 }
 
-// ==================== 设备标识 / JWT 解析（对齐 React lib/api + api-client device.ts） ====================
-
-const DEVICE_ID_KEY = 'zhiyu-device-id';
-
-export function getDeviceId(): string {
-  try {
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (!id) {
-      id =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-      localStorage.setItem(DEVICE_ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return '';
-  }
-}
+// ==================== JWT 解析（对齐 React lib/api + api-client） ====================
 
 /** 解析 JWT payload（仅本地读取角色/字段做展示与守卫，签名校验由后端完成）。 */
 export function parseJwtPayload(token: string): Record<string, unknown> {

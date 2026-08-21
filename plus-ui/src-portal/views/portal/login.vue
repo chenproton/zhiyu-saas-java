@@ -110,6 +110,7 @@ import { setToken, removeToken } from '@/api/http';
 import { authApi } from '@/api/auth';
 import type { CaptchaData, LoginResponse, TenantOption } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth';
+import { getDeviceId } from '@/utils/device';
 
 interface RoleInfo {
   id: string;
@@ -118,23 +119,6 @@ interface RoleInfo {
 
 const ROLE_PRIORITY = ['school_admin', 'teacher', 'student', 'enterprise_mentor'];
 const STORAGE_PREFIX = 'zhiyu-active-role:';
-const DEVICE_ID_KEY = 'zhiyu-device-id';
-
-function getDeviceId(): string {
-  try {
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (!id) {
-      id =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-      localStorage.setItem(DEVICE_ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return '';
-  }
-}
 
 function resolveActiveRole(userId: string | undefined, roles: RoleInfo[] | undefined): RoleInfo | undefined {
   if (!roles || roles.length === 0) return undefined;
