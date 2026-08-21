@@ -1,10 +1,10 @@
 package org.dromara.zhiyu.service.impl.job;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -33,7 +33,6 @@ import java.util.List;
 @Service
 public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
 
@@ -82,7 +81,7 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
         road.setName(req.getName());
         road.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
         road.setPositionIds(coalesce(req.getPositionIds()));
-        road.setSteps(toJson(req.getSteps()));
+        road.setSteps(ZhiyuJsonUtils.toJson(req.getSteps(), "[]"));
         learnRoadMapper.insert(road);
         return toDto(road);
     }
@@ -98,7 +97,7 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
         // 部分更新：未传的字段回填现有值，避免清空
         String description = req.getDescription() != null ? req.getDescription() : existing.getDescription();
         List<String> positionIds = req.getPositionIds() != null ? req.getPositionIds() : existing.getPositionIds();
-        String steps = req.getSteps() != null ? toJson(req.getSteps()) : existing.getSteps();
+        String steps = req.getSteps() != null ? ZhiyuJsonUtils.toJson(req.getSteps(), "[]") : existing.getSteps();
         learnRoadMapper.updateLearnRoad(id, tenantId, req.getName(), ZhiyuStringUtils.blankToNull(description), positionIds, steps);
         JobLearnRoad updated = fetchOwned(id, tenantId);
         return toDto(updated);
@@ -138,23 +137,12 @@ public class JobLearnRoadServiceImpl implements IJobLearnRoadService {
         return dto;
     }
 
-    private String toJson(List<Object> steps) {
-        if (steps == null) {
-            return "[]";
-        }
-        try {
-            return MAPPER.writeValueAsString(steps);
-        } catch (Exception e) {
-            return "[]";
-        }
-    }
-
     private List<Object> parseList(String json) {
         if (json == null || json.isBlank()) {
             return new ArrayList<>();
         }
         try {
-            Object v = MAPPER.readValue(json, OBJECT_LIST_REF);
+            Object v = ZhiyuJsonUtils.MAPPER.readValue(json, OBJECT_LIST_REF);
             return v == null ? new ArrayList<>() : (List<Object>) v;
         } catch (Exception e) {
             return new ArrayList<>();

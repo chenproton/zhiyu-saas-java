@@ -3,6 +3,7 @@ package org.dromara.zhiyu.service.impl.alliance;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.alliance.AllianceAchievement;
@@ -607,7 +608,7 @@ public class AlliancePublicServiceImpl implements IAlliancePublicService {
             return new ArrayList<>();
         }
         try {
-            List<BrandResponsibility> v = AllianceSupport.MAPPER.readValue(json, RESP_REF);
+            List<BrandResponsibility> v = ZhiyuJsonUtils.MAPPER.readValue(json, RESP_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -619,7 +620,7 @@ public class AlliancePublicServiceImpl implements IAlliancePublicService {
             return new ArrayList<>();
         }
         try {
-            List<BrandCertificate> v = AllianceSupport.MAPPER.readValue(json, CERT_REF);
+            List<BrandCertificate> v = ZhiyuJsonUtils.MAPPER.readValue(json, CERT_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();

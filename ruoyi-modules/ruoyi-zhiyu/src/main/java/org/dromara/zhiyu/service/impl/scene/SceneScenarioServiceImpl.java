@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -69,7 +70,6 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     /** 编码字母表（对齐 Go entityCodeAlphabet） */
     private static final String CODE_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {
     };
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
@@ -553,7 +553,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     }
 
     private SceneSnapshotServiceHelper snapshotService() {
-        return new SceneSnapshotServiceHelper(snapshotMapper, MAPPER, STRING_LIST_REF);
+        return new SceneSnapshotServiceHelper(snapshotMapper, ZhiyuJsonUtils.MAPPER, STRING_LIST_REF);
     }
 
     // ---------- 学生剥离 ----------
@@ -928,7 +928,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, STRING_LIST_REF);
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, STRING_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -938,7 +938,7 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
     /** 转 JSON 数组文本（MySQL 数组列统一 JSON 存储；PG→MySQL 迁移后 PG 字面量 {..} 写 JSON 列会失败）。 */
     private String toPgArrayLiteral(List<String> list) {
         try {
-            return MAPPER.writeValueAsString(list == null ? List.of() : list);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(list == null ? List.of() : list);
         } catch (Exception e) {
             return "[]";
         }

@@ -2,10 +2,10 @@ package org.dromara.zhiyu.service.impl.scene;
 
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -43,7 +43,6 @@ import java.util.UUID;
 @Service
 public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {
     };
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
@@ -116,7 +115,7 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
 
         String id = UUID.randomUUID().toString();
         resourceMapper.insertResource(id, tenantId, req.getName(), req.getType(), req.getUrl(),
-            req.getDescription(), req.getThumbnail(), fileSize, toJson(metadata), userId);
+            req.getDescription(), req.getThumbnail(), fileSize, ZhiyuJsonUtils.toJson(metadata, "{}"), userId);
         LibraryResource created = resourceMapper.selectItemById(id);
         if (created == null) {
             throw new ApiException(500, "internal_error", "创建资源失败");
@@ -193,24 +192,15 @@ public class SceneTaskResourceServiceImpl implements ISceneTaskResourceService {
             return null;
         }
         try {
-            Map<String, Object> m = MAPPER.readValue(metadata, MAP_REF);
+            Map<String, Object> m = ZhiyuJsonUtils.MAPPER.readValue(metadata, MAP_REF);
             Object raw = m.get("knowledgePointIds");
             if (raw == null) {
                 return null;
             }
-            return MAPPER.convertValue(raw, STRING_LIST_REF);
+            return ZhiyuJsonUtils.MAPPER.convertValue(raw, STRING_LIST_REF);
         } catch (Exception e) {
             log.warn("解析资源 metadata 知识点列表失败，降级为 null", e);
             return null;
-        }
-    }
-
-    private String toJson(Map<String, Object> map) {
-        try {
-            return MAPPER.writeValueAsString(map == null ? Map.of() : map);
-        } catch (Exception e) {
-            log.warn("Map 序列化 JSON 失败，降级为空对象", e);
-            return "{}";
         }
     }
 

@@ -1,7 +1,7 @@
 package org.dromara.zhiyu.service.impl.alliance;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
 import org.dromara.zhiyu.domain.dto.alliance.AllianceDtos.RelatedRef;
@@ -18,7 +18,6 @@ import java.util.Map;
  */
 final class AllianceSupport {
 
-    static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> STR_LIST_REF = new TypeReference<>() {
     };
     private static final TypeReference<List<Map<String, Object>>> MAP_LIST_REF = new TypeReference<>() {
@@ -83,7 +82,7 @@ final class AllianceSupport {
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, STR_LIST_REF);
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, STR_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -95,7 +94,7 @@ final class AllianceSupport {
             return "[]";
         }
         try {
-            return MAPPER.writeValueAsString(list);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(list);
         } catch (Exception e) {
             return "[]";
         }
@@ -106,7 +105,7 @@ final class AllianceSupport {
             return "{}";
         }
         try {
-            return MAPPER.writeValueAsString(obj);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(obj);
         } catch (Exception e) {
             return "{}";
         }
@@ -117,7 +116,7 @@ final class AllianceSupport {
             return fallback;
         }
         try {
-            return MAPPER.writeValueAsString(obj);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(obj);
         } catch (Exception e) {
             return fallback;
         }
@@ -128,7 +127,7 @@ final class AllianceSupport {
             return null;
         }
         try {
-            return MAPPER.readValue(json, Object.class);
+            return ZhiyuJsonUtils.MAPPER.readValue(json, Object.class);
         } catch (Exception e) {
             return null;
         }
@@ -139,7 +138,7 @@ final class AllianceSupport {
             return new ArrayList<>();
         }
         try {
-            List<Map<String, Object>> v = MAPPER.readValue(json, MAP_LIST_REF);
+            List<Map<String, Object>> v = ZhiyuJsonUtils.MAPPER.readValue(json, MAP_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -151,7 +150,7 @@ final class AllianceSupport {
             return new ArrayList<>();
         }
         try {
-            List<RelatedRef> v = MAPPER.readValue(json, REL_REF);
+            List<RelatedRef> v = ZhiyuJsonUtils.MAPPER.readValue(json, REL_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -163,7 +162,7 @@ final class AllianceSupport {
             return new ArrayList<>();
         }
         try {
-            List<TargetGroup> v = MAPPER.readValue(json, TARGET_GROUP_REF);
+            List<TargetGroup> v = ZhiyuJsonUtils.MAPPER.readValue(json, TARGET_GROUP_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -174,7 +173,7 @@ final class AllianceSupport {
      *  读取端 countPositionsOwned/countScenesOwned 的 REPLACE 兼容层对 JSON 数组原样通过。 */
     static String toPgArrayLiteral(List<String> list) {
         try {
-            return MAPPER.writeValueAsString(list == null ? List.of() : list);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(list == null ? List.of() : list);
         } catch (Exception e) {
             return "[]";
         }

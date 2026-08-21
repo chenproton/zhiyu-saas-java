@@ -17,7 +17,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -77,7 +77,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ImportExportServiceImpl implements IImportExportService {
 
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
-    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> LIST_STRING_REF = new TypeReference<>() {
     };
 
@@ -1846,7 +1845,7 @@ public class ImportExportServiceImpl implements IImportExportService {
             return null;
         }
         try {
-            return JSON_MAPPER.writeValueAsString(o);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(o);
         } catch (Exception e) {
             return null;
         }
@@ -1857,7 +1856,7 @@ public class ImportExportServiceImpl implements IImportExportService {
             return "[]";
         }
         try {
-            return JSON_MAPPER.writeValueAsString(list);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(list);
         } catch (Exception e) {
             return "[]";
         }
@@ -2474,7 +2473,7 @@ public class ImportExportServiceImpl implements IImportExportService {
     private String toPgArray(List<String> list) {
         // MySQL：数组列统一 JSON 数组存储（PG→MySQL 迁移后列类型为 JSON；PG 字面量 {..} 非法 JSON 会写入失败）
         try {
-            return JSON_MAPPER.writeValueAsString(list == null ? List.of() : list);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(list == null ? List.of() : list);
         } catch (Exception e) {
             return "[]";
         }
@@ -2488,7 +2487,7 @@ public class ImportExportServiceImpl implements IImportExportService {
         if (t.startsWith("[")) {
             // MySQL JSON 数组
             try {
-                return JSON_MAPPER.readValue(t, LIST_STRING_REF);
+                return ZhiyuJsonUtils.MAPPER.readValue(t, LIST_STRING_REF);
             } catch (Exception ignored) {
                 return List.of();
             }
@@ -3853,7 +3852,7 @@ public class ImportExportServiceImpl implements IImportExportService {
 
     private String jsonArray(List<String> list) {
         try {
-            return JSON_MAPPER.writeValueAsString(list);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(list);
         } catch (Exception e) {
             return "[]";
         }

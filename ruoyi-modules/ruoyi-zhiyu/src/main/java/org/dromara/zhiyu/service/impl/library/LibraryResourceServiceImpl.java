@@ -1,8 +1,8 @@
 package org.dromara.zhiyu.service.impl.library;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -55,7 +55,6 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
@@ -276,7 +275,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
     /** metadata Map → jsonb JSON 文本（null 时默认 "{}" 对齐 Go JSONMap） */
     private String toJson(Map<String, Object> metadata) {
         try {
-            return MAPPER.writeValueAsString(metadata == null ? Map.of() : metadata);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(metadata == null ? Map.of() : metadata);
         } catch (Exception e) {
             throw new ApiException(400, "bad_request", "元数据格式不正确");
         }
@@ -288,7 +287,7 @@ public class LibraryResourceServiceImpl implements ILibraryResourceService {
             return null;
         }
         try {
-            return MAPPER.readValue(json, MAP_REF);
+            return ZhiyuJsonUtils.MAPPER.readValue(json, MAP_REF);
         } catch (Exception e) {
             return null;
         }

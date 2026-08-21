@@ -2,10 +2,10 @@ package org.dromara.zhiyu.service.impl.scene;
 
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -48,7 +48,6 @@ import java.util.UUID;
 @Service
 public class SceneTaskServiceImpl implements ISceneTaskService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
@@ -123,7 +122,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
             req.getTaskType(), req.getDifficulty(), req.getBackground(),
             coalesce(req.getDependencyIds()), Boolean.TRUE.equals(req.getIsReferenced()), req.getSourceScenarioId(),
             coalesce(req.getKnowledgePointIds()), coalesce(req.getAbilityPointIds()), coalesce(req.getResourceIds()),
-            toJson(req.getEvalData()), scenarioTenantId);
+            ZhiyuJsonUtils.toJson(req.getEvalData(), "{}"), scenarioTenantId);
         return toDtos(List.of(fetchOwned(id))).getFirst();
     }
 
@@ -152,7 +151,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
             req.getTaskType(), req.getDifficulty(), req.getBackground(),
             coalesce(req.getDependencyIds()), Boolean.TRUE.equals(req.getIsReferenced()), req.getSourceScenarioId(),
             coalesce(req.getKnowledgePointIds()), coalesce(req.getAbilityPointIds()), coalesce(req.getResourceIds()),
-            toJson(req.getEvalData()));
+            ZhiyuJsonUtils.toJson(req.getEvalData(), "{}"));
         if (rows == 0) {
             throw new ApiException(404, "not_found", "任务不存在");
         }
@@ -338,7 +337,7 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
             }
             evalData.put("evaluationMethods", keys);
             evalData.put("methodWeights", weights);
-            t.setEvalData(toJson(evalData));
+            t.setEvalData(ZhiyuJsonUtils.toJson(evalData, "{}"));
         }
     }
 
@@ -446,21 +445,12 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
         return list == null ? List.of() : list;
     }
 
-    private String toJson(Map<String, Object> map) {
-        try {
-            return MAPPER.writeValueAsString(map == null ? Map.of() : map);
-        } catch (Exception e) {
-            log.warn("Map 序列化 JSON 失败，降级为空对象", e);
-            return "{}";
-        }
-    }
-
     private Map<String, Object> fromJson(String json) {
         if (json == null || json.isBlank()) {
             return null;
         }
         try {
-            return MAPPER.readValue(json, MAP_REF);
+            return ZhiyuJsonUtils.MAPPER.readValue(json, MAP_REF);
         } catch (Exception e) {
             log.warn("JSON 反序列化失败，降级为 null json={}", json, e);
             return null;

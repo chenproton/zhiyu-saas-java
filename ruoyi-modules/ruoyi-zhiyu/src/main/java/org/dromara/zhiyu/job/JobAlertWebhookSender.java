@@ -1,6 +1,5 @@
 package org.dromara.zhiyu.job;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 
 /**
  * 定时任务最终失败告警（对齐 Go scheduler.notifyAlert）。
@@ -29,7 +29,6 @@ import java.util.Map;
 @Component
 public class JobAlertWebhookSender {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
     private final String webhookUrl;
@@ -59,7 +58,7 @@ public class JobAlertWebhookSender {
             payload.put("error", err.getMessage() == null ? String.valueOf(err) : err.getMessage());
             payload.put("startedAt",
                 started.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
-            String body = MAPPER.writeValueAsString(payload);
+            String body = ZhiyuJsonUtils.MAPPER.writeValueAsString(payload);
             HttpRequest request = HttpRequest.newBuilder(URI.create(webhookUrl))
                 .timeout(TIMEOUT)
                 .header("Content-Type", "application/json")

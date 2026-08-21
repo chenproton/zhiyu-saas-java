@@ -1,10 +1,10 @@
 package org.dromara.zhiyu.service.impl.evaluation;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -44,7 +44,6 @@ import java.util.UUID;
 @Service
 public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
 
@@ -299,7 +298,7 @@ public class EvaluationPortraitServiceImpl implements IEvaluationPortraitService
             return new ArrayList<>();
         }
         try {
-            List<Object> v = MAPPER.readValue(json, OBJECT_LIST_REF);
+            List<Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, OBJECT_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();

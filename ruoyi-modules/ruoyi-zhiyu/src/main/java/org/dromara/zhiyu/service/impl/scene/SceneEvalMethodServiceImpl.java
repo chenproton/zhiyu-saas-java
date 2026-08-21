@@ -2,10 +2,10 @@ package org.dromara.zhiyu.service.impl.scene;
 
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -74,7 +74,6 @@ import java.util.UUID;
 @Service
 public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> LIST_REF = new TypeReference<>() {
     };
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
@@ -204,9 +203,9 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             evalMethodMapper.upsertMethod(tenantId, taskId,
                 input.getMethodKey(), input.getWeight() == null ? BigDecimal.ZERO : input.getWeight(),
                 input.getEvalObject(), input.getScoreType(),
-                toJson(input.getEvalSubjects(), "[]"),
+                ZhiyuJsonUtils.toJson(input.getEvalSubjects(), "[]"),
                 input.getStandardName(), input.getStandardMode(),
-                toJson(input.getResourceConfig(), "{}"),
+                ZhiyuJsonUtils.toJson(input.getResourceConfig(), "{}"),
                 newVersion, enabled);
             // upsert 后回读唯一键（task_id + method_key）对应行 id
             String configId = evalMethodMapper.selectMethodId(tenantId, taskId, input.getMethodKey());
@@ -222,7 +221,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             for (EvalPointInput ep : input.getEvalPoints() == null ? List.<EvalPointInput>of() : input.getEvalPoints()) {
                 evalMethodMapper.insertEvalPoint(tenantId, configId, ep.getName(), ep.getDescription(), ep.getSubType(),
                     coalesce(ep.getTypes()), ep.getWeight() == null ? BigDecimal.ZERO : ep.getWeight(),
-                    ep.getScoringMethod(), toJson(ep.getGradeMapping(), "[]"),
+                    ep.getScoringMethod(), ZhiyuJsonUtils.toJson(ep.getGradeMapping(), "[]"),
                     coalesce(ep.getKnowledgePointIds()), coalesce(ep.getAbilityPointIds()),
                     ep.getSortOrder() == null ? 0 : ep.getSortOrder());
             }
@@ -552,7 +551,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
         validateTemplate(req);
         String id = java.util.UUID.randomUUID().toString();
         templateMapper.insertTemplate(id, tenantId, req.getName(), req.getMode(), coalesce(req.getTypes()),
-            req.getDescription(), toJson(req.getData(), "{}"));
+            req.getDescription(), ZhiyuJsonUtils.toJson(req.getData(), "{}"));
         SceneRubricTemplate created = templateMapper.selectById(id);
         if (created == null) {
             throw new ApiException(500, "internal_error", "创建评分模板失败");
@@ -567,7 +566,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
         SceneRubricTemplate existing = fetchOwnedTemplate(id);
         validateTemplate(req);
         templateMapper.updateTemplate(id, req.getName(), req.getMode(), coalesce(req.getTypes()),
-            req.getDescription(), toJson(req.getData(), "{}"));
+            req.getDescription(), ZhiyuJsonUtils.toJson(req.getData(), "{}"));
         SceneRubricTemplate updated = templateMapper.selectById(id);
         if (updated == null) {
             throw new ApiException(500, "internal_error", "更新评分模板失败");
@@ -690,24 +689,12 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
 
     // ---------- 工具 ----------
 
-    private String toJson(Object value, String fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        try {
-            return MAPPER.writeValueAsString(value);
-        } catch (Exception e) {
-            log.warn("对象序列化 JSON 失败，降级为 fallback", e);
-            return fallback;
-        }
-    }
-
     private List<Object> parseList(String json) {
         if (json == null || json.isBlank()) {
             return new ArrayList<>();
         }
         try {
-            List<Object> v = MAPPER.readValue(json, LIST_REF);
+            List<Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             log.warn("JSON 数组解析失败，降级为空列表 json={}", json, e);
@@ -720,7 +707,7 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             return new LinkedHashMap<>();
         }
         try {
-            Map<String, Object> v = MAPPER.readValue(json, MAP_REF);
+            Map<String, Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, MAP_REF);
             return v == null ? new LinkedHashMap<>() : v;
         } catch (Exception e) {
             log.warn("JSON 对象解析失败，降级为空 Map json={}", json, e);

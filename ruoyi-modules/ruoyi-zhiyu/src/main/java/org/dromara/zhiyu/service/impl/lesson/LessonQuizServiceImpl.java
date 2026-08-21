@@ -1,8 +1,8 @@
 package org.dromara.zhiyu.service.impl.lesson;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -35,7 +35,6 @@ import java.util.UUID;
 @Service
 public class LessonQuizServiceImpl implements ILessonQuizService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {
     };
 
@@ -182,7 +181,7 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
 
     private String toJson(Map<String, Object> map) {
         try {
-            return MAPPER.writeValueAsString(map == null ? Map.of() : map);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(map == null ? Map.of() : map);
         } catch (Exception e) {
             throw new ApiException(400, "bad_request", "选项格式不正确");
         }
@@ -193,7 +192,7 @@ public class LessonQuizServiceImpl implements ILessonQuizService {
             return new LinkedHashMap<>();
         }
         try {
-            Map<String, Object> v = MAPPER.readValue(json, MAP_REF);
+            Map<String, Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, MAP_REF);
             return v == null ? new LinkedHashMap<>() : v;
         } catch (Exception e) {
             return new LinkedHashMap<>();

@@ -1,10 +1,10 @@
 package org.dromara.zhiyu.service.impl.job;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -47,7 +47,6 @@ import java.util.Map;
 @Service
 public class JobApprovalServiceImpl implements IJobApprovalService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
 
@@ -174,7 +173,7 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
         entry.put("createdAt", OffsetDateTime.now().toInstant().toString());
 
         List<Object> history = appendHistoryEntry(parseList(record.getHistory()), entry);
-        String historyJson = toJson(history);
+        String historyJson = ZhiyuJsonUtils.toJson(history, "[]");
 
         // 决策（对齐 Go decide 回调）：驳回直接终态；通过按步骤完成度推进
         boolean rejected = ZhiyuStatusConstants.REJECTED.equals(req.getAction());
@@ -462,18 +461,10 @@ public class JobApprovalServiceImpl implements IJobApprovalService {
             return new ArrayList<>();
         }
         try {
-            Object v = MAPPER.readValue(json, OBJECT_LIST_REF);
+            Object v = ZhiyuJsonUtils.MAPPER.readValue(json, OBJECT_LIST_REF);
             return v == null ? new ArrayList<>() : (List<Object>) v;
         } catch (Exception e) {
             return new ArrayList<>();
-        }
-    }
-
-    private String toJson(List<Object> list) {
-        try {
-            return MAPPER.writeValueAsString(list);
-        } catch (Exception e) {
-            return "[]";
         }
     }
 

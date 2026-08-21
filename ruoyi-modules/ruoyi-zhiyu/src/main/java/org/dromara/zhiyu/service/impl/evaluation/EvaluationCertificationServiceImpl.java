@@ -1,10 +1,10 @@
 package org.dromara.zhiyu.service.impl.evaluation;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -68,7 +68,6 @@ import java.util.UUID;
 @Service
 public class EvaluationCertificationServiceImpl implements IEvaluationCertificationService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
     private static final TypeReference<List<LevelMappingDto>> LEVEL_MAPPING_REF = new TypeReference<>() {
@@ -843,7 +842,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
             return new ArrayList<>();
         }
         try {
-            List<LevelMappingDto> v = MAPPER.readValue(json, LEVEL_MAPPING_REF);
+            List<LevelMappingDto> v = ZhiyuJsonUtils.MAPPER.readValue(json, LEVEL_MAPPING_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -878,7 +877,7 @@ public class EvaluationCertificationServiceImpl implements IEvaluationCertificat
 
     String toJson(Object v) {
         try {
-            return MAPPER.writeValueAsString(v);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(v);
         } catch (Exception e) {
             return "[]";
         }

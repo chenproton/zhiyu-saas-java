@@ -1,7 +1,6 @@
 package org.dromara.zhiyu.service.impl.affairs;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Font;
@@ -14,6 +13,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -78,7 +78,6 @@ import java.util.stream.Collectors;
 @Service
 public class SchedulingServiceImpl implements ISchedulingService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {
     };
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
@@ -1061,7 +1060,7 @@ public class SchedulingServiceImpl implements ISchedulingService {
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, STRING_LIST_REF);
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, STRING_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();

@@ -1,11 +1,11 @@
 package org.dromara.zhiyu.service.impl.job;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
@@ -87,7 +87,6 @@ public class JobPositionServiceImpl implements IJobPositionService {
     /** 编码字母表（对齐 Go entityCodeAlphabet） */
     private static final String CODE_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
 
@@ -1126,7 +1125,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
             return new LinkedHashMap<>();
         }
         try {
-            Map<String, Object> m = MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            Map<String, Object> m = ZhiyuJsonUtils.MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
             });
             return m == null ? new LinkedHashMap<>() : m;
         } catch (Exception e) {
@@ -1139,7 +1138,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
             return null;
         }
         try {
-            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            return ZhiyuJsonUtils.MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
             });
         } catch (Exception e) {
             return null;
@@ -1151,7 +1150,7 @@ public class JobPositionServiceImpl implements IJobPositionService {
             return new ArrayList<>();
         }
         try {
-            Object v = MAPPER.readValue(json, OBJECT_LIST_REF);
+            Object v = ZhiyuJsonUtils.MAPPER.readValue(json, OBJECT_LIST_REF);
             return v == null ? new ArrayList<>() : (List<Object>) v;
         } catch (Exception e) {
             return new ArrayList<>();

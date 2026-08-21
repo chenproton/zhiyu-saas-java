@@ -1,10 +1,10 @@
 package org.dromara.zhiyu.service.impl.partner;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -90,7 +90,6 @@ import java.util.stream.Collectors;
 public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
 
     private static final String CODE_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> EDITABLE_STATUSES = Set.of(ZhiyuStatusConstants.DRAFT, ZhiyuStatusConstants.PENDING, ZhiyuStatusConstants.REJECTED);
 
     private final SystemGuard systemGuard;
@@ -782,8 +781,8 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
 
         for (MethodInput m : req.getMethods() == null ? List.<MethodInput>of() : req.getMethods()) {
             evalMapper.upsertMethod(tenantId, taskId, m.getMethodKey(), m.getWeight(),
-                m.getEvalObject(), m.getScoreType(), toJson(m.getEvalSubjects()), m.getStandardName(),
-                m.getStandardMode(), toJson(m.getResourceConfig()), nextVersion, m.getIsEnabled() == null || m.getIsEnabled());
+                m.getEvalObject(), m.getScoreType(), ZhiyuJsonUtils.toJson(m.getEvalSubjects(), "{}"), m.getStandardName(),
+                m.getStandardMode(), ZhiyuJsonUtils.toJson(m.getResourceConfig(), "{}"), nextVersion, m.getIsEnabled() == null || m.getIsEnabled());
             // 冲突命中时回读唯一键（task_id + method_key）对应行 id
             String configId = evalMapper.selectMethodId(tenantId, taskId, m.getMethodKey());
             evalMapper.deleteEvalPoints(configId);
@@ -792,7 +791,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
             for (PartnerDtosEvalPointInput ep : wrapEvalPoints(m)) {
                 evalMapper.insertEvalPoint(tenantId, configId, ep.getName(), ep.getDescription(), ep.getSubType(),
                     ep.getTypes() == null ? List.of() : ep.getTypes(), ep.getWeight(), ep.getScoringMethod(),
-                    toJson(ep.getGradeMapping()), ep.getKnowledgePointIds() == null ? List.of() : ep.getKnowledgePointIds(),
+                    ZhiyuJsonUtils.toJson(ep.getGradeMapping(), "{}"), ep.getKnowledgePointIds() == null ? List.of() : ep.getKnowledgePointIds(),
                     ep.getAbilityPointIds() == null ? List.of() : ep.getAbilityPointIds(),
                     ep.getSortOrder() == null ? 0 : ep.getSortOrder());
             }
@@ -1340,18 +1339,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
     }
 
     private String evalDataToJson(Map<String, Object> evalData) {
-        return toJson(evalData);
-    }
-
-    private String toJson(Object o) {
-        if (o == null) {
-            return "{}";
-        }
-        try {
-            return MAPPER.writeValueAsString(o);
-        } catch (Exception e) {
-            return "{}";
-        }
+        return ZhiyuJsonUtils.toJson(evalData, "{}");
     }
 
     private List<String> parseStringList(String json) {
@@ -1359,7 +1347,7 @@ public class PartnerCoBuildServiceImpl implements IPartnerCoBuildService {
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {
             });
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {

@@ -1,11 +1,11 @@
 package org.dromara.zhiyu.service.impl.partner;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.security.ZhiyuAuthzLoader;
@@ -60,7 +60,6 @@ import java.util.UUID;
 @Service
 public class PartnerServiceImpl implements IPartnerService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {
     };
 
@@ -653,7 +652,7 @@ public class PartnerServiceImpl implements IPartnerService {
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, STRING_LIST_REF);
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, STRING_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();

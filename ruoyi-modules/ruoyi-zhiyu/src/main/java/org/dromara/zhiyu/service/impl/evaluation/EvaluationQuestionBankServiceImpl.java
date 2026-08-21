@@ -1,10 +1,10 @@
 package org.dromara.zhiyu.service.impl.evaluation;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.constant.ZhiyuStatusConstants;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -55,7 +55,6 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
     /** 编码字母表（对齐 Go entityCodeAlphabet） */
     private static final String CODE_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {
     };
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
@@ -907,7 +906,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, STRING_LIST_REF);
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, STRING_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -919,7 +918,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
             return new ArrayList<>();
         }
         try {
-            List<Object> v = MAPPER.readValue(json, OBJECT_LIST_REF);
+            List<Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, OBJECT_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -931,7 +930,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
             return new LinkedHashMap<>();
         }
         try {
-            Map<String, Object> v = MAPPER.readValue(json, MAP_REF);
+            Map<String, Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, MAP_REF);
             return v == null ? new LinkedHashMap<>() : v;
         } catch (Exception e) {
             return new LinkedHashMap<>();
@@ -944,7 +943,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, STRING_LIST_REF);
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, STRING_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return List.of(json);
@@ -964,7 +963,7 @@ public class EvaluationQuestionBankServiceImpl implements IEvaluationQuestionBan
 
     String toJson(Object v) {
         try {
-            return MAPPER.writeValueAsString(v);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(v);
         } catch (Exception e) {
             return "{}";
         }

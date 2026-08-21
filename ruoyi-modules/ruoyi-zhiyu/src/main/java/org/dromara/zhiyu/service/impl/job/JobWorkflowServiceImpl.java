@@ -1,10 +1,10 @@
 package org.dromara.zhiyu.service.impl.job;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.mybatis.core.query.LambdaQueryBuilder;
 import org.dromara.common.mybatis.core.query.QueryBuilder;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 import org.dromara.zhiyu.core.util.ZhiyuStringUtils;
 import org.dromara.zhiyu.core.page.ListResponse;
 import org.dromara.zhiyu.core.security.TenantContext;
@@ -33,7 +33,6 @@ import java.util.List;
 @Service
 public class JobWorkflowServiceImpl implements IJobWorkflowService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> OBJECT_LIST_REF = new TypeReference<>() {
     };
     private static final TypeReference<List<String>> STRING_LIST_REF = new TypeReference<>() {
@@ -96,7 +95,7 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
         wf.setName(req.getName());
         wf.setScene(ZhiyuStringUtils.blankToNull(req.getScene()));
         wf.setDescription(ZhiyuStringUtils.blankToNull(req.getDescription()));
-        wf.setSteps(toJson(req.getSteps()));
+        wf.setSteps(ZhiyuJsonUtils.toJson(req.getSteps(), "[]"));
         wf.setMajorIds(toJsonStrings(req.getMajorIds()));
         wf.setUsageCount(0);
         wf.setStatus("active");
@@ -121,7 +120,7 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
             throw new ApiException(400, "bad_request", "无效状态");
         }
         // 部分更新兜底：未携带的列表字段回退现有值，防止清空已配置步骤/适用专业
-        String steps = req.getSteps() != null ? toJson(req.getSteps()) : existing.getSteps();
+        String steps = req.getSteps() != null ? ZhiyuJsonUtils.toJson(req.getSteps(), "[]") : existing.getSteps();
         String majorIds = req.getMajorIds() != null ? toJsonStrings(req.getMajorIds()) : existing.getMajorIds();
         String name = req.getName();
         String description = req.getDescription() != null ? req.getDescription() : existing.getDescription();
@@ -164,23 +163,12 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
         return dto;
     }
 
-    private String toJson(List<Object> steps) {
-        if (steps == null) {
-            return "[]";
-        }
-        try {
-            return MAPPER.writeValueAsString(steps);
-        } catch (Exception e) {
-            return "[]";
-        }
-    }
-
     private String toJsonStrings(List<String> ids) {
         if (ids == null) {
             return "[]";
         }
         try {
-            return MAPPER.writeValueAsString(ids);
+            return ZhiyuJsonUtils.MAPPER.writeValueAsString(ids);
         } catch (Exception e) {
             return "[]";
         }
@@ -191,7 +179,7 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
             return new ArrayList<>();
         }
         try {
-            Object v = MAPPER.readValue(json, OBJECT_LIST_REF);
+            Object v = ZhiyuJsonUtils.MAPPER.readValue(json, OBJECT_LIST_REF);
             return v == null ? new ArrayList<>() : (List<Object>) v;
         } catch (Exception e) {
             return new ArrayList<>();
@@ -203,7 +191,7 @@ public class JobWorkflowServiceImpl implements IJobWorkflowService {
             return new ArrayList<>();
         }
         try {
-            List<String> v = MAPPER.readValue(json, STRING_LIST_REF);
+            List<String> v = ZhiyuJsonUtils.MAPPER.readValue(json, STRING_LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
             return new ArrayList<>();

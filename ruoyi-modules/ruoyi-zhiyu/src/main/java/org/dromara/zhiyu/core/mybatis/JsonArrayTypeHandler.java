@@ -1,7 +1,6 @@
 package org.dromara.zhiyu.core.mybatis;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedJdbcTypes;
@@ -13,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 
 /**
  * PostgreSQL jsonb 数组列（tenants.secondary_colleges 等）↔ {@link List}&lt;Object&gt; 类型处理器。
@@ -26,7 +26,6 @@ import java.util.List;
 @MappedJdbcTypes(JdbcType.OTHER)
 public class JsonArrayTypeHandler extends BaseTypeHandler<List<Object>> {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<Object>> LIST_REF = new TypeReference<>() {
     };
 
@@ -34,7 +33,7 @@ public class JsonArrayTypeHandler extends BaseTypeHandler<List<Object>> {
     public void setNonNullParameter(PreparedStatement ps, int i, List<Object> parameter, JdbcType jdbcType)
         throws SQLException {
         try {
-            ps.setString(i, MAPPER.writeValueAsString(parameter));
+            ps.setString(i, ZhiyuJsonUtils.MAPPER.writeValueAsString(parameter));
         } catch (Exception e) {
             throw new SQLException("jsonb 序列化失败", e);
         }
@@ -60,7 +59,7 @@ public class JsonArrayTypeHandler extends BaseTypeHandler<List<Object>> {
             return null;
         }
         try {
-            List<Object> v = MAPPER.readValue(json, LIST_REF);
+            List<Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception ignored) {
             return null;

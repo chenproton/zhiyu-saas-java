@@ -6,7 +6,6 @@ import org.apache.ibatis.type.MappedJdbcTypes;
 import org.apache.ibatis.type.MappedTypes;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.CallableStatement;
 
 import java.sql.PreparedStatement;
@@ -14,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 
 /**
  * MySQL JSON 数组列 ↔ {@link List}&lt;String&gt; 类型处理器（原 PG uuid[]/varchar[] 列已迁移为 JSON）。
@@ -29,7 +29,6 @@ import java.util.List;
 @MappedJdbcTypes(JdbcType.VARCHAR)
 public class JsonStringArrayTypeHandler extends BaseTypeHandler<List<String>> {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<String>> LIST_REF = new TypeReference<>() {
     };
 
@@ -38,7 +37,7 @@ public class JsonStringArrayTypeHandler extends BaseTypeHandler<List<String>> {
     public void setNonNullParameter(PreparedStatement ps, int i, List<String> parameter, JdbcType jdbcType)
         throws SQLException {
         try {
-            ps.setString(i, MAPPER.writeValueAsString(parameter == null ? java.util.List.of() : parameter));
+            ps.setString(i, ZhiyuJsonUtils.MAPPER.writeValueAsString(parameter == null ? java.util.List.of() : parameter));
         } catch (Exception e) {
             throw new SQLException("数组列 JSON 序列化失败", e);
         }
@@ -64,7 +63,7 @@ public class JsonStringArrayTypeHandler extends BaseTypeHandler<List<String>> {
             return null;
         }
         try {
-            return MAPPER.readValue(json, LIST_REF);
+            return ZhiyuJsonUtils.MAPPER.readValue(json, LIST_REF);
         } catch (Exception ignored) {
             return null;
         }
