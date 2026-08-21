@@ -124,7 +124,7 @@ public interface JobPositionImportMapper {
     String findAbilityPointId(@Param("tenantId") String tenantId, @Param("name") String name);
 
     @Update("UPDATE ability_points SET attributes = #{attributes} WHERE id = #{id}"
-        + " AND (attributes IS NULL OR attributes = '{}')")
+        + " AND (attributes IS NULL OR JSON_LENGTH(attributes) = 0)")
     int updateAbilityPointAttributesIfEmpty(@Param("id") String id, @Param("attributes") String attributes);
 
     @Insert("INSERT INTO ability_points (id, tenant_id, name, is_public, attributes, code)"

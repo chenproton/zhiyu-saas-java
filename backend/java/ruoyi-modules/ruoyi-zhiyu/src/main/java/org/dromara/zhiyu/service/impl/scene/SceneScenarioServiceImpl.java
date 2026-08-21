@@ -954,22 +954,13 @@ public class SceneScenarioServiceImpl implements ISceneScenarioService {
         }
     }
 
-    /** 转 PG 数组字面量（{"a","b"}；JSON 数组文本不能直接 CAST AS uuid[]）。 */
+    /** 转 JSON 数组文本（MySQL 数组列统一 JSON 存储；PG→MySQL 迁移后 PG 字面量 {..} 写 JSON 列会失败）。 */
     private String toPgArrayLiteral(List<String> list) {
-        if (list == null || list.isEmpty()) {
-            return "{}";
+        try {
+            return MAPPER.writeValueAsString(list == null ? List.of() : list);
+        } catch (Exception e) {
+            return "[]";
         }
-        StringBuilder sb = new StringBuilder("{");
-        for (int i = 0; i < list.size(); i++) {
-            if (i > 0) {
-                sb.append(',');
-            }
-            String v = list.get(i);
-            String escaped = v.replace("\\", "\\\\").replace("\"", "\\\"");
-            sb.append('"').append(escaped).append('"');
-        }
-        sb.append('}');
-        return sb.toString();
     }
 
     private Map<String, String> nameMap(List<?> rows) {

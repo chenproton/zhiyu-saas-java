@@ -170,20 +170,13 @@ final class AllianceSupport {
         }
     }
 
-    /** 转 PG 数组字面量（{a,b}）。 */
+    /** 转 JSON 数组文本（MySQL 数组列统一 JSON 存储；PG→MySQL 迁移后 PG 字面量 {..} 写 JSON 列会失败）。
+     *  读取端 countPositionsOwned/countScenesOwned 的 REPLACE 兼容层对 JSON 数组原样通过。 */
     static String toPgArrayLiteral(List<String> list) {
-        if (list == null || list.isEmpty()) {
-            return "{}";
+        try {
+            return MAPPER.writeValueAsString(list == null ? List.of() : list);
+        } catch (Exception e) {
+            return "[]";
         }
-        StringBuilder sb = new StringBuilder("{");
-        for (int i = 0; i < list.size(); i++) {
-            if (i > 0) {
-                sb.append(',');
-            }
-            String v = list.get(i) == null ? "" : list.get(i);
-            sb.append('"').append(v.replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
-        }
-        sb.append('}');
-        return sb.toString();
     }
 }

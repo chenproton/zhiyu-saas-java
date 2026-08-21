@@ -15,6 +15,7 @@ import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.dromara.zhiyu.core.security.TenantContext;
 import org.dromara.zhiyu.core.web.ApiException;
@@ -73,6 +74,8 @@ public class ImportExportServiceImpl implements IImportExportService {
 
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    private static final TypeReference<List<String>> LIST_STRING_REF = new TypeReference<>() {
+    };
 
     /** Excel 导入实体（kebab-case URL 段，excel/preview 路径） */
     private static final Set<String> EXCEL_IMPORT_ENTITIES = Set.of(
@@ -2448,33 +2451,39 @@ public class ImportExportServiceImpl implements IImportExportService {
     }
 
     private String toPgArray(List<String> list) {
-        if (list == null || list.isEmpty()) {
-            return "{}";
+        // MySQL：数组列统一 JSON 数组存储（PG→MySQL 迁移后列类型为 JSON；PG 字面量 {..} 非法 JSON 会写入失败）
+        try {
+            return JSON_MAPPER.writeValueAsString(list == null ? List.of() : list);
+        } catch (Exception e) {
+            return "[]";
         }
-        StringBuilder sb = new StringBuilder("{");
-        for (int i = 0; i < list.size(); i++) {
-            if (i > 0) {
-                sb.append(',');
-            }
-            String s = list.get(i) == null ? "" : list.get(i);
-            s = s.replace("\\", "\\\\").replace("\"", "\\\"");
-            sb.append('"').append(s).append('"');
-        }
-        return sb.append('}').toString();
     }
 
     private List<String> parsePgArrayText(String s) {
-        if (s == null || s.isEmpty() || "{}".equals(s)) {
+        if (s == null || s.isEmpty()) {
             return List.of();
         }
-        List<String> result = new ArrayList<>();
-        for (String item : s.substring(1, s.length() - 1).split(",")) {
-            String t = item.trim();
-            if (t.startsWith("\"")) {
-                t = t.substring(1, t.length() - 1);
+        String t = s.trim();
+        if (t.startsWith("[")) {
+            // MySQL JSON 数组
+            try {
+                return JSON_MAPPER.readValue(t, LIST_STRING_REF);
+            } catch (Exception ignored) {
+                return List.of();
             }
-            if (!t.isEmpty()) {
-                result.add(t);
+        }
+        if ("{}".equals(t) || "{null}".equals(t)) {
+            return List.of();
+        }
+        // 兼容 PG 遗留字面量 {a,b}（迁移前旧数据）
+        List<String> result = new ArrayList<>();
+        for (String item : t.substring(1, t.length() - 1).split(",")) {
+            String v = item.trim();
+            if (v.startsWith("\"")) {
+                v = v.substring(1, v.length() - 1);
+            }
+            if (!v.isEmpty() && !"null".equals(v)) {
+                result.add(v);
             }
         }
         return result;
