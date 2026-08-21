@@ -452,7 +452,8 @@ public class SceneTaskServiceImpl implements ISceneTaskService {
         try {
             return ZhiyuJsonUtils.MAPPER.readValue(json, MAP_REF);
         } catch (Exception e) {
-            log.warn("JSON 反序列化失败，降级为 null json={}", json, e);
+            log.warn("JSON 反序列化失败，降级为 null json={}...",
+                json.length() > 500 ? json.substring(0, 500) : json, e);
             return null;
         }
     }

@@ -671,8 +671,8 @@ public class ImportExportServiceImpl implements IImportExportService {
                     parentName = nodeNameById.getOrDefault(parentId, "");
                 }
                 String refTypeName = "original".equals(str(n.get("ref_type"))) ? "颗粒课" : "";
-                String knowledgeNames = String.join(",", courseImportMapper.listNodeKnowledgePointNames(str(n.get("id"))));
-                String resourceNames = String.join(",", courseImportMapper.listNodeResourceNames(str(n.get("id"))));
+                String knowledgeNames = String.join(",", courseImportMapper.listNodeKnowledgePointNames(tenantId, str(n.get("id"))));
+                String resourceNames = String.join(",", courseImportMapper.listNodeResourceNames(tenantId, str(n.get("id"))));
                 List<String> evalChinese = new ArrayList<>();
                 for (String mk : courseImportMapper.listNodeEvalMethods(tenantId, str(n.get("id")))) {
                     String ch = mapCourseEvalMethodToChinese(mk);

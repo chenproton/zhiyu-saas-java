@@ -43,3 +43,10 @@ zhiyu 业务模块（`ruoyi-modules/ruoyi-zhiyu`）由 Go 版迁移而来，为�
 4. **sa-token 有效期 7 天**（`sa-token.timeout: 604800`，application.yml:96）：对齐 Go 版 7 天会话时长，长于框架常见默认。
 
 风险说明：以上各项均降低默认防护强度（无验证码/无接口加密/长会话/部分路径绕过 Sa-Token），风险由用户确认接受。若后续重新启用某项防护，属行为变更，需同步 spec 与本 ADR。
+
+## 追加登记（2026-08-21 全量审计）：2 项工程结构偏差
+
+2026-08-21 对照 AGENTS.md 第二部分框架契约的全量审计（后端分层 / 安全 / 前端三线子代理）发现 zhiyu 模块另有 2 类**工程结构**偏差，均无运行时安全/功能影响（功能由等价实现承担且已测试），登记防止被当作「违规」误改：
+
+1. **Controller 直接暴露 Entity，无 VO 层**：161 个 Mapper 均为 `BaseMapperPlus<Entity, Entity>`，全模块 0 个 `@AutoMapper`/`MapstructUtils`/`selectVoPage`，96 处 controller 直接返回 domain Entity（入参已用 DTO）。响应结构即 Entity 结构，`password_hash`/`oauth` 已 `@JsonIgnore` 兜底不外泄。代价：无法使用框架 `@Sensitive`/`@Translation` 等序列化注解，规范审查反复命中。**处置**：新模块按框架约定建 VO；存量端点不回改（改响应结构即破坏前端契约）。
+2. **自定义鉴权替代 `@SaCheckPermission`/`@Log` 注解**：81 个 Controller 均无框架权限/日志注解，由 `ZhiyuAuthFilter`（登录+活跃校验）+ `ZhiyuAuthzInterceptor` + `ZhiyuAuthzRules`（路径规则表，572 路由全覆盖、8 条未命中恰为公开白名单）+ `ZhiyuOperationLogFilter`（/api/v1 写操作统一异步审计）承担，功能等价且有 `ZhiyuAuthzRulesTest`（525 行规则矩阵）覆盖。代价：与框架注解风格不一致，规则表需手工维护（新增端点漏配时兜底为「portal 平台 + 已登录」，见低危项）。**处置**：新端点按框架约定加注解并同步规则表；存量端点不回改。

@@ -697,7 +697,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             List<Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, LIST_REF);
             return v == null ? new ArrayList<>() : v;
         } catch (Exception e) {
-            log.warn("JSON 数组解析失败，降级为空列表 json={}", json, e);
+            log.warn("JSON 数组解析失败，降级为空列表 json={}...",
+                json.length() > 500 ? json.substring(0, 500) : json, e);
             return new ArrayList<>();
         }
     }
@@ -710,7 +711,8 @@ public class SceneEvalMethodServiceImpl implements ISceneEvalMethodService {
             Map<String, Object> v = ZhiyuJsonUtils.MAPPER.readValue(json, MAP_REF);
             return v == null ? new LinkedHashMap<>() : v;
         } catch (Exception e) {
-            log.warn("JSON 对象解析失败，降级为空 Map json={}", json, e);
+            log.warn("JSON 对象解析失败，降级为空 Map json={}...",
+                json.length() > 500 ? json.substring(0, 500) : json, e);
             return new LinkedHashMap<>();
         }
     }

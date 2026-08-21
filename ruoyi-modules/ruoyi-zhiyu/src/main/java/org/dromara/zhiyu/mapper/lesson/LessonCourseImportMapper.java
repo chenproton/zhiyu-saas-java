@@ -111,12 +111,12 @@ public interface LessonCourseImportMapper {
     List<Map<String, Object>> listCourseNodes(@Param("tenantId") String tenantId, @Param("courseId") String courseId);
 
     @Select("SELECT kp.name FROM knowledge_points kp JOIN node_knowledge_point_bindings nb ON nb.knowledge_point_id = kp.id"
-        + " WHERE nb.node_id = #{nodeId} ORDER BY kp.name")
-    List<String> listNodeKnowledgePointNames(@Param("nodeId") String nodeId);
+        + " WHERE nb.node_id = #{nodeId} AND kp.tenant_id = #{tenantId} ORDER BY kp.name")
+    List<String> listNodeKnowledgePointNames(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId);
 
     @Select("SELECT r.name FROM resource_library r JOIN node_resource_bindings nb ON nb.resource_id = r.id"
-        + " WHERE nb.node_id = #{nodeId} ORDER BY r.name")
-    List<String> listNodeResourceNames(@Param("nodeId") String nodeId);
+        + " WHERE nb.node_id = #{nodeId} AND r.tenant_id = #{tenantId} ORDER BY r.name")
+    List<String> listNodeResourceNames(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId);
 
     @Select("SELECT type FROM node_quizzes WHERE node_id = #{nodeId} AND tenant_id = #{tenantId}"
         + " ORDER BY type")

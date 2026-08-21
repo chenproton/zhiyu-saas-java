@@ -126,7 +126,8 @@ public class FileServiceImpl implements IFileService {
             resp.setUrl("/uploads/" + tenantId + "/" + filename);
             resp.setName(original);
             resp.setSize(file.getSize());
-            resp.setMimeType(file.getContentType());
+            // mimeType 按服务端扩展名判定（不信任客户端 Content-Type，防伪造类型绕过预览白名单）
+            resp.setMimeType(contentTypeOf(filename));
             return resp;
         } catch (IOException e) {
             log.error("文件保存失败 tenantId={} filename={} err={}", tenantId, filename, e.getMessage());
