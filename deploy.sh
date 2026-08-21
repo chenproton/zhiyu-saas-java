@@ -322,7 +322,7 @@ run_migrations() {
 # 后端 Maven 工程位于仓库根（ruoyi-* 模块 + pom.xml + scripts/），需显式枚举模块根，
 # 不能扫 "$1/."——会把 docs/deploy/plus-ui node_modules 下的 yml 算进哈希，破坏缓存
 java_hash() {
-  find "$1/pom.xml" "$1/ruoyi-admin" "$1/ruoyi-api" "$1/ruoyi-common" "$1/ruoyi-modules" "$1/ruoyi-extend" "$1/script" \
+  find "$1/pom.xml" "$1/ruoyi-admin" "$1/ruoyi-api" "$1/ruoyi-common" "$1/ruoyi-modules" "$1/ruoyi-extend" "$1/scripts" \
     -type f \( -name '*.java' -o -name '*.xml' -o -name '*.yml' -o -name '*.yaml' -o -name 'pom.xml' \) \
     -not -path '*/target/*' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'

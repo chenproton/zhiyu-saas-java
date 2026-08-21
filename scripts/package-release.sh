@@ -90,7 +90,7 @@ log "构建前端产物（plus-ui：admin + portal）..."
 rsync -a --exclude=.git --exclude=node_modules --exclude=dist --exclude=dist-portal \
   --exclude='*.tsbuildinfo' --exclude=offline \
   --exclude=ruoyi-admin --exclude=ruoyi-api --exclude=ruoyi-common \
-  --exclude=ruoyi-modules --exclude=ruoyi-extend --exclude=script \
+  --exclude=ruoyi-modules --exclude=ruoyi-extend --exclude=scripts \
   "$ROOT/" "$BUILD_DIR/"
 
 # plus-ui 依赖安装（admin + portal 共用同一份 node_modules）
