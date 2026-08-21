@@ -10,6 +10,7 @@
           <div>
             <el-button v-if="selectedIds.length" type="danger" :loading="batchDeleting" @click="confirmBatchDelete">批量删除({{ selectedIds.length }})</el-button>
             <el-button v-if="selectedIds.length" @click="joinDialog = true">批量加入部门({{ selectedIds.length }})</el-button>
+            <el-button @click="importDialog = true">批量导入</el-button>
             <el-button @click="exportTeachers">批量导出</el-button>
             <el-button type="primary" @click="openCreate">新建教师</el-button>
           </div>
@@ -119,6 +120,11 @@
         <el-button type="primary" :loading="saving" @click="saveJoin">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入 -->
+    <el-dialog v-model="importDialog" title="批量导入教师" width="560px">
+      <ImportExport entity="teachers" :on-imported="load" />
+    </el-dialog>
   </div>
 </template>
 
@@ -128,6 +134,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { userManagementApi, staffTitleApi } from '@/api/portal';
 import { roleApi, organizationApi } from '@/api/system';
 import { authedFetch } from '@/api/http';
+import ImportExport from '@/components/ImportExport.vue';
 import { useAuthStore } from '@/stores/auth';
 import type { User, StaffTitle } from '@/types/user';
 
@@ -167,6 +174,8 @@ const resetPassword = ref('');
 
 const joinDialog = ref(false);
 const joinOrgNodeId = ref('');
+
+const importDialog = ref(false);
 
 const titleNameMap = computed(() => {
   const m = new Map<string, string>();

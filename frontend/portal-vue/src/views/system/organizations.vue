@@ -8,6 +8,7 @@
             <span class="card-sub">管理学校组织架构树，同时维护学生线与教师线的组织归属</span>
           </div>
           <div>
+            <el-button @click="importDialog = true">批量导入</el-button>
             <el-button @click="exportOrgs">批量导出</el-button>
             <el-button type="primary" @click="openDialog(null)">新建节点</el-button>
           </div>
@@ -65,6 +66,11 @@
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入 -->
+    <el-dialog v-model="importDialog" title="批量导入组织架构" width="560px">
+      <ImportExport entity="organizations" :on-imported="load" />
+    </el-dialog>
   </div>
 </template>
 
@@ -74,6 +80,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { organizationApi, orgTypeApi } from '@/api/system';
 import { userManagementApi } from '@/api/portal';
 import { authedFetch } from '@/api/http';
+import ImportExport from '@/components/ImportExport.vue';
 import { useAuthStore } from '@/stores/auth';
 import type { Organization, OrgType } from '@/types/system';
 
@@ -91,6 +98,8 @@ const form = reactive({ name: '', typeId: '', parentId: '', sortOrder: 0 });
 
 const graduateLoading = ref(false);
 const graduateTarget = ref<Organization | null>(null);
+
+const importDialog = ref(false);
 
 // 展平树为下拉选项
 const flatNodes = computed(() => {

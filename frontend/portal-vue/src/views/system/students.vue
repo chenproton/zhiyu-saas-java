@@ -11,6 +11,7 @@
             <el-button v-if="selectedIds.length" type="danger" :loading="batchDeleting" @click="confirmBatchDelete">批量删除({{ selectedIds.length }})</el-button>
             <el-button v-if="selectedIds.length" :loading="graduateLoading" @click="confirmBatchGraduate">批量毕业({{ selectedIds.length }})</el-button>
             <el-button v-if="selectedIds.length" @click="joinDialog = true">批量加入班级({{ selectedIds.length }})</el-button>
+            <el-button @click="importDialog = true">批量导入</el-button>
             <el-button @click="exportStudents">批量导出</el-button>
             <el-button type="primary" @click="openCreate">新建学生</el-button>
           </div>
@@ -102,6 +103,11 @@
         <el-button type="primary" :loading="saving" @click="saveJoin">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入 -->
+    <el-dialog v-model="importDialog" title="批量导入学生" width="560px">
+      <ImportExport entity="students" :on-imported="load" />
+    </el-dialog>
   </div>
 </template>
 
@@ -111,6 +117,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { userManagementApi } from '@/api/portal';
 import { roleApi, organizationApi, orgTypeApi } from '@/api/system';
 import { authedFetch } from '@/api/http';
+import ImportExport from '@/components/ImportExport.vue';
 import { useAuthStore } from '@/stores/auth';
 import type { User } from '@/types/user';
 
@@ -149,6 +156,8 @@ const resetPassword = ref('');
 
 const joinDialog = ref(false);
 const joinClassNodeId = ref('');
+
+const importDialog = ref(false);
 
 const filteredStudents = computed(() =>
   students.value.filter((s) => {
