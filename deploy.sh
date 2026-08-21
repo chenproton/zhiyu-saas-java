@@ -1249,7 +1249,7 @@ if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   mysql_db -e "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);" 2>/dev/null || true
   BASE_RECORDED=$(mysql_db -N -e "SELECT 1 FROM schema_migrations WHERE version='001_baseline'" 2>/dev/null | tr -d ' ')
   BASE_TABLE=$(mysql_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='tenants'" 2>/dev/null | tr -d ' ')
-  if [[ "$BASE_RECORDED" == "1" || "$BASE_TABLE" == "t" ]]; then
+  if [[ "$BASE_RECORDED" == "1" || "$BASE_TABLE" == "1" ]]; then
     log "  baseline 已存在于数据库（记录=${BASE_RECORDED:-无} / 代表表=${BASE_TABLE:-无}），跳过 baseline"
     mysql_db -e "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON DUPLICATE KEY UPDATE version = version;" 2>/dev/null || true
   else
@@ -1260,8 +1260,7 @@ fi
 if [[ ! -f "$DEPLOY_DIR/.migration-done" ]]; then
   if $NEED_BASELINE; then
     log "  空库，执行 001_baseline（单事务 + ON_ERROR_STOP）..."
-    mysql_db < \
-      -f "$MIGRATIONS_DIR/001_baseline.up.sql" 2>&1 | tail -3 \
+    mysql_db < "$MIGRATIONS_DIR/001_baseline.up.sql" 2>&1 | tail -3 \
       || rollback_deploy "baseline 迁移失败（已整体回滚事务，库仍为空，可修复后重试）"
     mysql_db -e "INSERT INTO schema_migrations (version) VALUES ('001_baseline') ON DUPLICATE KEY UPDATE version = version;" 2>/dev/null || true
   fi

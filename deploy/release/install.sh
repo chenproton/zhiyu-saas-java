@@ -329,7 +329,7 @@ MIG_DIR="$PKG_DIR/deploy/migrations"
 if [[ -d "$MIG_DIR" && -f "$MIG_DIR/001_baseline.up.sql" ]]; then
   BASE_RECORDED=$(mysql_db -N -e "SELECT 1 FROM schema_migrations WHERE version='001_baseline'" 2>/dev/null | tr -d ' ')
   BASE_TABLE=$(mysql_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='tenants'" 2>/dev/null | tr -d ' ')
-  if [[ "$BASE_RECORDED" != "1" && "$BASE_TABLE" != "t" ]]; then
+  if [[ "$BASE_RECORDED" != "1" && "$BASE_TABLE" != "1" ]]; then
     log "  空库，执行 001_baseline（单事务 + ON_ERROR_STOP）..."
     mysql_db < "$MIG_DIR/001_baseline.up.sql" 2>&1 | tail -3 \
       || die "baseline 迁移失败（事务已回滚，备份位于 $DEPLOY_DIR/backups/）"
