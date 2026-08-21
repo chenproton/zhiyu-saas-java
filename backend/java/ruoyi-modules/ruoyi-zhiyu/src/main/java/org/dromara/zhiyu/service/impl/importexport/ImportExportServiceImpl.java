@@ -2014,7 +2014,8 @@ public class ImportExportServiceImpl implements IImportExportService {
                         mapper.updateQuestionBankName(existing, name);
                         created++;
                     } else if (rename) {
-                        mapper.insertQuestionBank(UUID.randomUUID().toString(), tenantId, name + suffix(), cell(row, 1), userId);
+                        mapper.insertQuestionBank(UUID.randomUUID().toString(), tenantId, name + suffix(), cell(row, 1), userId,
+                            randomCode("TK"));
                         created++;
                     } else {
                         skipped++;
@@ -2023,7 +2024,8 @@ public class ImportExportServiceImpl implements IImportExportService {
             } else {
                 created++;
                 if (!preview) {
-                    mapper.insertQuestionBank(UUID.randomUUID().toString(), tenantId, name, cell(row, 1), userId);
+                    mapper.insertQuestionBank(UUID.randomUUID().toString(), tenantId, name, cell(row, 1), userId,
+                        randomCode("TK"));
                 }
             }
         }
@@ -2054,7 +2056,8 @@ public class ImportExportServiceImpl implements IImportExportService {
                         mapper.updateExamName(existing, name);
                         created++;
                     } else if (rename) {
-                        mapper.insertExam(UUID.randomUUID().toString(), tenantId, name + suffix(), cell(row, 1), userId);
+                        mapper.insertExam(UUID.randomUUID().toString(), tenantId, name + suffix(), cell(row, 1), userId,
+                            randomCode("SJ"));
                         created++;
                     } else {
                         skipped++;
@@ -2063,7 +2066,8 @@ public class ImportExportServiceImpl implements IImportExportService {
             } else {
                 created++;
                 if (!preview) {
-                    mapper.insertExam(UUID.randomUUID().toString(), tenantId, name, cell(row, 1), userId);
+                    mapper.insertExam(UUID.randomUUID().toString(), tenantId, name, cell(row, 1), userId,
+                        randomCode("SJ"));
                 }
             }
         }
@@ -4051,8 +4055,8 @@ public class ImportExportServiceImpl implements IImportExportService {
     private void insertGeneric(String entity, String tenantId, String userId, String name, String code) {
         String id = UUID.randomUUID().toString();
         switch (entity) {
-            case "question_banks" -> mapper.insertQuestionBank(id, tenantId, name, null, userId);
-            case "exams" -> mapper.insertExam(id, tenantId, name, null, userId);
+            case "question_banks" -> mapper.insertQuestionBank(id, tenantId, name, null, userId, randomCode("TK"));
+            case "exams" -> mapper.insertExam(id, tenantId, name, null, userId, randomCode("SJ"));
             case "courses" -> mapper.insertCourse(id, tenantId, code, name, userId);
             case "career_positions" -> mapper.insertCareerPosition(id, tenantId, name, null, userId);
             case "scenarios" -> mapper.insertScenario(id, tenantId, name, code, userId);

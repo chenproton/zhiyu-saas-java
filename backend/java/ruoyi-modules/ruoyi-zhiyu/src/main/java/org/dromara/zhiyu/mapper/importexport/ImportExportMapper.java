@@ -190,10 +190,11 @@ public interface ImportExportMapper {
     @Select("SELECT id FROM question_banks WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectQuestionBankIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
-    @Insert("INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id, version, owner_type, is_draft_pool)"
-        + " VALUES (#{id}, #{tenantId}, #{name}, #{description}, 'draft', 0, #{creatorId}, 'V1.0', 'tenant', FALSE)")
+    @Insert("INSERT INTO question_banks (id, tenant_id, name, description, status, question_count, creator_id, version, owner_type, is_draft_pool, code)"
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{description}, 'draft', 0, #{creatorId}, 'V1.0', 'tenant', FALSE, #{code})")
     int insertQuestionBank(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
-                           @Param("description") String description, @Param("creatorId") String creatorId);
+                           @Param("description") String description, @Param("creatorId") String creatorId,
+                           @Param("code") String code);
 
     @Update("UPDATE question_banks SET name = #{name}, updated_at = NOW() WHERE id = #{id}")
     int updateQuestionBankName(@Param("id") String id, @Param("name") String name);
@@ -201,10 +202,11 @@ public interface ImportExportMapper {
     @Select("SELECT id FROM exams WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectExamIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
 
-    @Insert("INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, creator_id, version, owner_type)"
-        + " VALUES (#{id}, #{tenantId}, #{name}, #{description}, 'draft', 0, 60, #{creatorId}, 'V1.0', 'tenant')")
+    @Insert("INSERT INTO exams (id, tenant_id, name, description, status, total_score, duration, creator_id, version, owner_type, code)"
+        + " VALUES (#{id}, #{tenantId}, #{name}, #{description}, 'draft', 0, 60, #{creatorId}, 'V1.0', 'tenant', #{code})")
     int insertExam(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
-                   @Param("description") String description, @Param("creatorId") String creatorId);
+                   @Param("description") String description, @Param("creatorId") String creatorId,
+                   @Param("code") String code);
 
     @Update("UPDATE exams SET name = #{name}, updated_at = NOW() WHERE id = #{id}")
     int updateExamName(@Param("id") String id, @Param("name") String name);
