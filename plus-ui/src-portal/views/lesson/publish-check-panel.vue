@@ -58,7 +58,7 @@ import type { SysNode } from './lesson-edit-utils';
 
 const props = withDefaults(
   defineProps<{
-    node: SysNode | undefined;
+    node?: SysNode;
     hideEval?: boolean;
     hideDetailedDescription?: boolean;
   }>(),

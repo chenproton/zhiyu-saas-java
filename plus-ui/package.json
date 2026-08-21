@@ -20,8 +20,8 @@
     "dev": "vite serve --mode development",
     "dev:portal": "vite --config vite/portal.config.ts",
     "fmt": "oxfmt .",
-    "lint": "oxlint src",
-    "lint:fix": "oxlint --fix src",
+    "lint": "oxlint src src-portal",
+    "lint:fix": "oxlint --fix src src-portal",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -201,6 +201,7 @@ const weightKeys = computed<string[]>(() => {
         ? selectedKnowledgePoints.value
         : knowledgePoints.value.map((k) => k.id);
   }
+  return [];
 });
 
 const availableDimensions = computed<WeightDimension[]>(() => {

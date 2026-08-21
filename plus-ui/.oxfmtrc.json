@@ -3,6 +3,8 @@
   "ignorePatterns": [
     "src/types/components.d.ts",
     "src/types/auto-imports.d.ts",
+    "src-portal",
+    "public-portal",
     ".ai_state",
     ".claude",
     ".codex",

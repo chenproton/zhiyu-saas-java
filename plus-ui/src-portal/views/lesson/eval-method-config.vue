@@ -529,7 +529,7 @@ import { fetchAllPages, uid, clone, buildDefaultReviewSteps, makeDefaultEvalRule
 
 const props = withDefaults(
   defineProps<{
-    value: EvalRuleConfig | undefined;
+    value?: EvalRuleConfig;
     knowledgePoints?: KnowledgePointItem[];
     abilityPoints?: AbilityPointItem[];
   }>(),

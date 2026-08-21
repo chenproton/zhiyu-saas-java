@@ -69,8 +69,9 @@ export interface HybridGradeRequest {
 
 const env = import.meta.env as unknown as Record<string, string | undefined>;
 
-/** 实践场景平台（场景资源、学生/教师学习页、评分页） */
-export const SCENE_PLATFORM_URL = env.VITE_SCENE_PLATFORM_URL || 'http://111.170.170.202:3003';
+/** 实践场景平台（场景资源、学生/教师学习页、评分页）。
+ *  生产由 deploy.sh 注入 VITE_SCENE_PLATFORM_URL；未配置时兜底为同源相对路径（不再硬编码外部演示环境 IP） */
+export const SCENE_PLATFORM_URL = env.VITE_SCENE_PLATFORM_URL || '';
 
 /** 混合课备课页（站内路由） */
 export const HYBRID_PREP_URL = '/lesson/admin/hybrid/add?id=hybrid-1';

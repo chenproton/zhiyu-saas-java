@@ -21,5 +21,15 @@
     "correctness": "error",
     "suspicious": "error"
   },
-  "ignorePatterns": [".ai_state", ".claude", ".codex", "doc", "dist/**", "dist-ssr/**", "coverage/**"]
+  "overrides": [
+    {
+      "files": ["src-portal/**"],
+      "rules": {
+        "unicorn/no-array-sort": "off",
+        "unicorn/no-useless-fallback-in-spread": "off",
+        "unicorn/no-useless-spread": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [".ai_state", ".claude", ".codex", "doc", "dist/**", "dist-portal/**", "dist-ssr/**", "coverage/**"]
 }

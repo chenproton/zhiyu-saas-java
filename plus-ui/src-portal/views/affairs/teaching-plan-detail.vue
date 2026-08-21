@@ -31,7 +31,7 @@
       <el-table v-loading="loading" :data="flatRows" stripe :span-method="spanMethod" row-key="__key">
         <el-table-column label="课程" min-width="180">
           <template #default="{ row }">
-            <template v-if="row.__group">
+            <template v-if="row.isGroup">
               <span class="group-label">第 {{ row.startWeek }} 周起（{{ row.count }} 门）</span>
             </template>
             <template v-else>
@@ -43,7 +43,7 @@
         </el-table-column>
         <el-table-column label="类型" width="70">
           <template #default="{ row }">
-            <span v-if="!row.__group" :class="['entry-badge', `entry-badge-${row.type}`]">{{ entryTypeLabel(row.type) }}</span>
+            <span v-if="!row.isGroup" :class="['entry-badge', `entry-badge-${row.type}`]">{{ entryTypeLabel(row.type) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="学分" width="90">
@@ -56,7 +56,7 @@
               min="0"
               step="0.5"
             />
-            <span v-else-if="!row.__group">{{ row.credits }}</span>
+            <span v-else-if="!row.isGroup">{{ row.credits }}</span>
           </template>
         </el-table-column>
         <el-table-column label="总学时" width="90">
@@ -68,7 +68,7 @@
               type="number"
               min="0"
             />
-            <span v-else-if="!row.__group">{{ row.totalHours }}</span>
+            <span v-else-if="!row.isGroup">{{ row.totalHours }}</span>
           </template>
         </el-table-column>
         <el-table-column label="起止周" width="130">
@@ -78,7 +78,7 @@
               <span class="week-sep">-</span>
               <el-input v-model="editMap[row.id].endWeek" class="cell-input" type="number" min="1" />
             </div>
-            <span v-else-if="!row.__group">{{ row.startWeek }}-{{ row.endWeek }}周</span>
+            <span v-else-if="!row.isGroup">{{ row.startWeek }}-{{ row.endWeek }}周</span>
           </template>
         </el-table-column>
         <el-table-column label="班级" min-width="150">
@@ -93,7 +93,7 @@
             >
               <el-option v-for="c in classOptions" :key="c.id" :label="c.name" :value="c.id" />
             </el-select>
-            <span v-else-if="!row.__group">{{ classNamesText(row) }}</span>
+            <span v-else-if="!row.isGroup">{{ classNamesText(row) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="教师" min-width="130">
@@ -108,7 +108,7 @@
             >
               <el-option v-for="u in teacherOptions" :key="u.id" :label="u.name" :value="u.id" />
             </el-select>
-            <span v-else-if="!row.__group">{{ row.teacherName || '-' }}</span>
+            <span v-else-if="!row.isGroup">{{ row.teacherName || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="场地类型" width="110">
@@ -122,12 +122,12 @@
             >
               <el-option v-for="v in VENUE_TYPES" :key="v" :label="v" :value="v" />
             </el-select>
-            <span v-else-if="!row.__group">{{ row.venueType || '-' }}</span>
+            <span v-else-if="!row.isGroup">{{ row.venueType || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <span v-if="!row.__group">{{ contentStatusLabel(row.status) }}</span>
+            <span v-if="!row.isGroup">{{ contentStatusLabel(row.status) }}</span>
           </template>
         </el-table-column>
       </el-table>
@@ -220,16 +220,16 @@ const flatRows = computed(() => {
     map.set(e.startWeek, list);
   }
   const groups = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
-  const rows: (TeachingPlanEntry & { __group?: boolean; __key: string; startWeek: number; count?: number })[] = [];
+  const rows: (TeachingPlanEntry & { isGroup?: boolean; __key: string; startWeek: number; count?: number })[] = [];
   for (const [startWeek, groupEntries] of groups) {
-    rows.push({ __group: true, __key: `group-${startWeek}`, startWeek, count: groupEntries.length } as never);
+    rows.push({ isGroup: true, __key: `group-${startWeek}`, startWeek, count: groupEntries.length } as never);
     for (const e of groupEntries) rows.push({ ...e, __key: e.id });
   }
   return rows;
 });
 
 function spanMethod({ row, columnIndex }: { row: any; columnIndex: number }) {
-  if (row.__group) {
+  if (row.isGroup) {
     return columnIndex === 0 ? { rowspan: 1, colspan: 9 } : { rowspan: 0, colspan: 0 };
   }
   return { rowspan: 1, colspan: 1 };

@@ -66,7 +66,7 @@ async function load() {
     const sub = await superAdminApi.getSubscription(props.tenant.id);
     for (const m of PLATFORM_MODULES) {
       const v = sub.modules?.[m.id];
-      modules[m.id] = v === true || v === 'true' || v === 1 ? true : false;
+      modules[m.id] = v === true || v === 'true' || v === 1;
     }
   } catch (e) {
     ElMessage.error((e as Error).message || '加载套餐失败');
