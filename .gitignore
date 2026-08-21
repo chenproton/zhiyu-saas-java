@@ -51,12 +51,11 @@ target/
 .project
 .settings
 .flattened-pom.xml
-# Frontend - plus-ui
+# Frontend - plus-ui（admin + portal 双应用工程）
 plus-ui/.history/
 plus-ui/node_modules/
 plus-ui/dist/
-frontend/portal-vue/dist/
-frontend/portal-vue/node_modules/
+plus-ui/dist-portal/
 
 plus-ui/npm-debug.log*
 plus-ui/yarn-debug.log*

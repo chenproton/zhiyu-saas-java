@@ -1,6 +1,6 @@
 # 原型 / 交互说明 — 知与 SaaS
 
-> 基于前端门户（Vue 业务门户 `frontend/portal-vue` + Vue 管理端 `plus-ui`）回溯整理。
+> 基于前端门户（Vue 业务门户 `plus-ui/src-portal` + Vue 管理端 `plus-ui/src`）回溯整理。
 > 亮色主题；无独立设计稿。
 
 ---
@@ -37,7 +37,7 @@
 
 ### 1.3 全局布局
 
-所有业务子系统统一 `PortalLayout`（`frontend/portal-vue/src/layouts/PortalLayout.vue`）：**TopNav（固定）+ 左侧 PlatformSideNav（可折叠）+ 主内容区**；landing 系列页面为独立无壳布局（仅 TopNav）。门户端为 TopNav + 内容。
+所有业务子系统统一 `PortalLayout`（`plus-ui/src-portal/layouts/PortalLayout.vue`）：**TopNav（固定）+ 左侧 PlatformSideNav（可折叠）+ 主内容区**；landing 系列页面为独立无壳布局（仅 TopNav）。门户端为 TopNav + 内容。
 
 ---
 
@@ -65,14 +65,14 @@
 | 教师 | 工作台首页 / 我的场景·课程 / 我的课表 / 我的学生 / 个人中心 |
 | 学校管理员 | 工作台首页 / 资源运营 / 审批中心 / 教师学生情况 / 个人中心 |
 
-- Tab 结构与 `frontend/portal-vue/src/views/portal/workspace.vue` 一致（`?tab=` 驱动，非法/缺省回 dashboard）
+- Tab 结构与 `plus-ui/src-portal/views/portal/workspace.vue` 一致（`?tab=` 驱动，非法/缺省回 dashboard）
 - 数据来自 `workspaceDashboard` 聚合接口（30s 缓存）
 - 学生「我的学习」Tab 可筛选（场景/课程等），点击前往真实落地页
 - 教师「我的场景·课程」支持 hybrid 评分弹窗（`HybridGradingDialog`；React 时代 grading-iframe-dialog 未移植）
 
 ### 2.4 内容列表页（content-list-page 通用模板）
 
-岗位/场景/课程/题库/试卷/人培方案等统一模式（`frontend/portal-vue/src/components/common/content-list-page.vue`）：
+岗位/场景/课程/题库/试卷/人培方案等统一模式（`plus-ui/src-portal/components/common/content-list-page.vue`）：
 
 - **区域划分**：顶部页头（标题 + 描述 + 新建按钮）→ 筛选区（搜索框 + 批次/专业/状态筛选）→ 列表区（`el-table`：封面+名称、类型/分类、状态徽章（el-tag）、时间、操作列）
 - **列宽**：`el-table` 原生列宽（`width`/`min-width`），无拖拽持久化（React 时代可拖拽列宽未移植）
@@ -194,6 +194,6 @@
 
 ## 5. 附录：组件速查
 
-- 通用组件清单与用法：见 `AGENTS.md` 第二部分与 `frontend/portal-vue`/`plus-ui` 源码（Element Plus / RuoYi 框架）
+- 通用组件清单与用法：见 `AGENTS.md` 第二部分与 `plus-ui` 源码（`src-portal` 门户 Element Plus / `src` 管理端 RuoYi 框架）
 - 表单与表格规范（el-form / el-table / el-dialog）：同见上（Vue 门户基于 Element Plus）
 - 后端对应交互语义：`docs/spec/02-api-contract.md`（内容 13 动作、批次 6 动作、导入流程）

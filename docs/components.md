@@ -4,6 +4,6 @@
 
 当前前端为 **Vue 单栈**，组件复用以根 `AGENTS.md` 第二部分（Java 框架契约）与前端工程源码为准：
 
-- **业务门户** `frontend/portal-vue`（Vue 3.5 + Element Plus + Pinia）：通用组件位于 `src/components/`，布局壳位于 `src/layouts/`（`PlatformSideNav.vue` / `PortalLayout.vue` / `navigation-config.ts`），页面位于 `src/views/`。
+- **业务门户** `plus-ui/src-portal`（Vue 3.5 + Element Plus + Pinia）：通用组件位于 `src-portal/components/`，布局壳位于 `src-portal/layouts/`（`PlatformSideNav.vue` / `PortalLayout.vue` / `navigation-config.ts`），页面位于 `src-portal/views/`。
 - **管理端** `plus-ui`（RuoYi 框架）：通用组件位于 `src/components/`（`DictTag`/`Pagination`/`RightToolbar`/`ImageUpload` 等），页面位于 `src/views/`。
 - **复用纪律**：接需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施（AGENTS.md「二、开发原则」）。

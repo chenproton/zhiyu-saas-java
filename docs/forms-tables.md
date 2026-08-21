@@ -4,6 +4,6 @@
 
 当前前端为 **Vue 单栈**，表单/表格以 Element Plus 与 RuoYi 框架为准：
 
-- **业务门户** `frontend/portal-vue`：`el-form` / `el-table` / `el-dialog` / `el-select` 等 Element Plus 组件 + `src/layouts/` 布局体系，页面见 `src/views/`。
+- **业务门户** `plus-ui/src-portal`：`el-form` / `el-table` / `el-dialog` / `el-select` 等 Element Plus 组件 + `src-portal/layouts/` 布局体系，页面见 `src-portal/views/`。
 - **管理端** `plus-ui`（RuoYi 框架）：表单/表格/分页（`Pagination`）等规范见框架文档与 `src/views/` 既有页面写法。
 - 分页契约：`limit/offset` 参数、`{items,total}` 返回（`02-api-contract.md` §4.3）。

@@ -2,20 +2,18 @@
   "name": "zhiyu-saas",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "dev:portal": "pnpm --filter portal-vue dev",
-    "build:portal": "pnpm --filter portal-vue build",
-    "build:plus-ui": "pnpm --filter plus-ui build",
-    "build:all": "pnpm build:portal && pnpm build:plus-ui",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
-    "format": "prettier --write \"frontend/portal-vue/**/*.{ts,vue,js,mjs,cjs,css,json}\"",
-    "format:check": "prettier --check \"frontend/portal-vue/**/*.{ts,vue,js,mjs,cjs,css,json}\""
+    "dev:portal": "pnpm -C plus-ui dev:portal",
+    "build:portal": "pnpm -C plus-ui build:portal",
+    "build:plus-ui": "pnpm -C plus-ui build:admin",
+    "build:all": "pnpm -C plus-ui build",
+    "lint": "pnpm -C plus-ui lint",
+    "format": "prettier --write \"plus-ui/src-portal/**/*.{ts,vue,js,mjs,cjs,css,json}\"",
+    "format:check": "prettier --check \"plus-ui/src-portal/**/*.{ts,vue,js,mjs,cjs,css,json}\""
   },
   "devDependencies": {
     "prettier": "^3.9.6"

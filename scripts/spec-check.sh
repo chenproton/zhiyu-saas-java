@@ -254,11 +254,11 @@ fi
 [ "$found" -eq 0 ] && pass "ADR-0003 关键写 mapper 的 SQL 租户条件齐备"
 
 # XSS 扫描（提示级，Vue 用 v-html 渲染用户/LLM 内容时需确认已消毒）
-_xss_hits=$(grep -rln 'v-html' frontend/portal-vue/src --include='*.vue' 2>/dev/null | grep -vE 'node_modules|/dist/')
+_xss_hits=$(grep -rln 'v-html' plus-ui/src-portal --include='*.vue' 2>/dev/null | grep -vE 'node_modules|/dist/')
 if [ -n "$_xss_hits" ]; then
   echo "  [提示] 前端使用 v-html 的文件（请确认渲染的是否为用户/LLM 内容、是否已消毒）："
   for h in $_xss_hits; do
-    echo "         ${h#frontend/portal-vue/}"
+    echo "         ${h#plus-ui/src-portal/}"
   done
 fi
 

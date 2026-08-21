@@ -1,6 +1,7 @@
 # Vue 业务门户（Java 配套）规格文档 — 知与 SaaS
 
-> 状态（2026-08 迁移完成）：**Java + Vue 单栈**。Go 后端与 React 前端（原目录已随迁移删除）已于 2026-08 移除；本仓库仅剩 Java 后端（`ruoyi-*`）+ Vue 业务门户（`frontend/portal-vue`）+ Vue 管理端（`plus-ui`），共用 MySQL 8.0，统一由 `deploy.sh` 部署（`db/migrations` 纯 mysql 迁移 + Java Maven 构建 + portal-vue/plus-ui 构建 + SeedRunner 种子 + 框架表初始化 + 冒烟）。**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**AI 功能已随迁移整体下线**（页面/接口/表已删除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
+> 状态（2026-08-21 工程合并）：**portal 业务门户已并入 `plus-ui` 单工程双构建**——门户源码位于 `plus-ui/src-portal`（入口 `plus-ui/portal.html`，构建产物 `plus-ui/dist-portal`），与管理端（`plus-ui/src` → `plus-ui/dist`）共用一份 package.json / lockfile / node_modules，运行时仍是两个独立 SPA；原 `frontend/portal-vue` 目录已删除。下文提到的 `frontend/portal-vue` 路径均为历史写法，对应现路径 `plus-ui/src-portal`（`src/` → `src-portal/`）。
+> 状态（2026-08 迁移完成）：**Java + Vue 单栈**。Go 后端与 React 前端（原目录已随迁移删除）已于 2026-08 移除；本仓库仅剩 Java 后端（`ruoyi-*`）+ Vue 前端工程 `plus-ui`（内含业务门户 `src-portal` 与管理端 `src`），共用 MySQL 8.0，统一由 `deploy.sh` 部署（`db/migrations` 纯 mysql 迁移 + Java Maven 构建 + plus-ui（admin+portal）构建 + SeedRunner 种子 + 框架表初始化 + 冒烟）。**业务门户全量迁移完成**：系统管理（组织/角色/专业/行业/用户）+ 岗位/场景/课程/联盟/评价/教务/伙伴/门户 各域列表/详情编辑/批次/归档/审批 + 岗位学习路径与推荐 + 评价（岗位能力认定/考试使用/成绩结果/课程与场景任务评分）+ 教务（教学计划/学生/教师/排课/场地节次/Excel 导入导出）+ 伙伴企业端（共建/就业/合作/学校/任务/账号）+ 门户（学习社区/我的收藏）+ 登录/会话（含多租户选择）+ 工作流/导入导出。**AI 功能已随迁移整体下线**（页面/接口/表已删除）。superadmin 为独立 SaaS 运营平台单列（不在 portal api-client 范围内）。
 > 状态（2026-08-19 完成）：**Vue 门户与 React 基线功能对齐实施完成**。M1-M8 全部模块翻译/核对完成，M9 特有页分类落地，M10 验收通过：路由差距清零、`vue-tsc` 类型检查 + `vite build` 通过、`spec-check.sh` 硬约束全部通过；M11 全局布局体系复刻完成。详见 §11。
 > **阅读约定**：本文档记录迁移专项，§1–§10 多为**迁移执行期的背景与过程叙述**（其中提到的 Next.js / java-edu / Go 后端 / `/java/` 前缀 / 8083 双栈 / deploy-java.sh 均为历史状态，现已不存在）；**当前形态以本状态头与 §8「部署与验证」为准**。
 >
@@ -16,7 +17,7 @@
 ### 1.2 目标
 把 Java 配套的**业务门户**（岗位/场景/课程/联盟/评价/教务等前台页面）从 Next.js 迁移到 Vue 3.5 / TypeScript / Vite，使 Java 具备独立的 Vue 前端体系：
 
-1. 新建独立 Vue 业务门户应用（`frontend/portal-vue`），与 plus-ui 管理端并存，均对接 Java 后端。
+1. 新建独立 Vue 业务门户应用（原 `frontend/portal-vue`，现 `plus-ui/src-portal`），与 plus-ui 管理端并存，均对接 Java 后端。
 2. **复用**：Java 后端（零改动）、plus-ui 工程骨架（构建/依赖/权限/请求封装）、shared-types（TS 类型直接移植）。
 3. **增量迁移**：按业务域逐域翻译，按域渐进切换，任何时刻既有生产不受影响。
 4. 明确边界：**不触碰**既有 Go 后端与 Next.js 前端任何文件（历史约束，现已随单栈迁移自然满足）。
@@ -42,9 +43,9 @@
 > 决策：**不**另起炉灶用 Vite 6.x 或其它版本，统一沿用 plus-ui 的锁定版本，避免双 Vue 工程依赖漂移。
 
 ### 2.2 独立应用 vs 塞进 plus-ui
-- **决策：新建独立应用 `frontend/portal-vue`**，不复用 plus-ui 的「后台管理」布局/路由/菜单体系。
+- **决策：新建独立应用（原 `frontend/portal-vue`，现并入 plus-ui 为 `src-portal` 第二构建）**，不复用 plus-ui 的「后台管理」布局/路由/菜单体系。
 - 理由：业务门户是前台 landing + 卡片导航 + 多角色工作台风格（见 `05-prototype-interaction.md`），与 plus-ui 的后台侧栏布局形态不同；硬塞会导致布局层大改 plus-ui，破坏管理端。
-- 但**复用** plus-ui 的：`vite.config.ts`/`tsconfig.json`/`uno.config.ts` 工程配置、权限 store/指令、Element Plus 通用组件（Pagination/DictTag 等）。注意：portal-vue 请求层为**原生 fetch**（`src/api/http.ts`，无 axios 依赖），token 存取也在 `http.ts` 内实现，不复用 plus-ui 的 request/auth utils。
+- 但**复用** plus-ui 的：`vite.config.ts`/`tsconfig.json`/`uno.config.ts` 工程配置、权限 store/指令、Element Plus 通用组件（Pagination/DictTag 等）。注意：portal 请求层为**原生 fetch**（`src-portal/api/http.ts`，无 axios 依赖），token 存取也在 `http.ts` 内实现，不复用 plus-ui 的 request/auth utils。
 
 ### 2.3 数据边界
 - **无数据模型变更**：Java 后端已共享 MySQL 8.0（同一库 `zhiyu_saas`），Vue 门户纯前端，不新增表/迁移/字段。
@@ -109,18 +110,18 @@
 
 ## 7. 前端开发计划（WBS）
 
-> 全程只新增 `frontend/portal-vue/**` 与部署脚本/nginx 增量配置；不修改既有前端/后端基线。
+> 全程只新增门户前端工程（原 `frontend/portal-vue/**`，现 `plus-ui/src-portal/**`）与部署脚本/nginx 增量配置；不修改既有前端/后端基线。
 
 ### Phase 0 — 工程基建（一次，依赖：无）
-- [x] `frontend/portal-vue` 应用壳：Vite/TS/Element Plus/pinia/vue-router 配置（复用 plus-ui 版本锁定；请求层用原生 fetch，无 axios）。
+- [x] 门户应用壳（原 `frontend/portal-vue`，现 `plus-ui/src-portal`）：Vite/TS/Element Plus/pinia/vue-router 配置（复用 plus-ui 版本锁定；请求层用原生 fetch，无 axios）。
 - [ ] 登录页 + 布局（前台 landing/卡片导航风格）+ 路由守卫 + 权限 store + `v-hasPermi` 指令。
-- [ ] 移植 `shared-types`（26 个 .ts）为 `frontend/portal-vue/src/types/*`。
-- [x] Vue 请求层 `src/api/*`：原生 fetch 封装（`http.ts`）+ `/api/v1` + 401 处理 + token 存取（单栈部署无 `-java` 前缀隔离）。
-- [ ] nginx：portal-vue 静态资源与 SPA fallback 路由（见 §8）。
+- [ ] 移植 `shared-types`（26 个 .ts）为 `plus-ui/src-portal/types/*`。
+- [x] Vue 请求层 `src-portal/api/*`：原生 fetch 封装（`http.ts`）+ `/api/v1` + 401 处理 + token 存取（单栈部署无 `-java` 前缀隔离）。
+- [ ] nginx：门户静态资源与 SPA fallback 路由（见 §8）。
 - [ ] 冒烟：登录 → me → 空工作台可渲染。
 
 ### Phase 1 — 试点域 library（依赖 Phase 0）
-- [x] 列表页（资源库列表：搜索 + 类型筛选 + 分页 + 增删改，复用 `el-table`/`el-form`/`el-dialog`）——MVP 完成，`src/views/library/resources.vue` 构建通过。
+- [x] 列表页（资源库列表：搜索 + 类型筛选 + 分页 + 增删改，复用 `el-table`/`el-form`/`el-dialog`）——MVP 完成，`src-portal/views/library/resources.vue` 构建通过。
 - [ ] 详情页、标签查询/绑定、批量导入、预览、零引用统计（增量补齐，见 §10 扩展性预留）。
 - [ ] 沉淀翻译模板到本 spec §3.2，回填最佳实践（已按模板落地，待正式回填）。
 - [ ] 验收：library 核心链路与 Java 契约一致，权限/租户行为等价（待 nginx 接线后部署冒烟）。
@@ -136,15 +137,15 @@
 ## 8. 部署与验证
 
 ### 8.1 部署（单栈现状，无 `/java` 前缀）
-- 统一经 `deploy.sh`（**唯一部署入口**）：`db/migrations` 纯 mysql 迁移 + `.` Maven 构建 + `frontend/portal-vue`/`plus-ui` 构建 + SeedRunner 种子 + Java 框架表初始化 + 健康门禁/业务冒烟（详见 `03-development-plan.md` §5）。
+- 统一经 `deploy.sh`（**唯一部署入口**）：`db/migrations` 纯 mysql 迁移 + `.` Maven 构建 + `plus-ui`（admin+portal）构建 + SeedRunner 种子 + Java 框架表初始化 + 健康门禁/业务冒烟（详见 `03-development-plan.md` §5）。
 - 入口：边缘 nginx :80 **根路径直连**（`deploy/nginx/conf.d/`，单栈配置已注明「无 /java/ 前缀分流」），业务门户/管理端/API/上传全部经容器网关 → `java-backend`。`VITE_API_BASE=/api/v1`。
-- 前端：portal-vue 为业务门户（根路径 + SPA fallback），plus-ui 为管理端；均由 deploy.sh 构建并发布。
-- 登录态：单栈部署 token key 直接用平台基础 key（`zhiyu-portal-token`（portal）/ `zhiyu-token`（saas）/ `zhiyu-partner-token`（partner），见 `frontend/portal-vue/src/api/http.ts`），**无 `-java` 后缀隔离**。
+- 前端：plus-ui 单工程双构建——门户（`src-portal`，根路径 + SPA fallback，产物 `dist-portal`）与管理端（`src`，产物 `dist`）；均由 deploy.sh 构建并发布。
+- 登录态：单栈部署 token key 直接用平台基础 key（`zhiyu-portal-token`（portal）/ `zhiyu-token`（saas）/ `zhiyu-partner-token`（partner），见 `plus-ui/src-portal/api/http.ts`），**无 `-java` 后缀隔离**。
 - 上传件：`/uploads/` 由 Java 后端统一服务，走 `zhiyu-saas_uploads_data` 卷（容器以 uid 1000 运行）。
 - 历史状态（已不存在）：`/java/` 前缀、8083 直连双栈、`deploy-java.sh`、java-edu 容器均已随单栈迁移移除。
 
 ### 8.2 质量门禁（每 Phase 提交前）
-- `pnpm --filter portal-vue build`（vite build）通过；`vue-tsc` 类型检查通过。
+- `pnpm -C plus-ui build:portal`（vue-tsc 类型检查 + vite build）通过。
 - `./scripts/spec-check.sh` 通过（本迁移不引入迁移/后端改动，应无新增阻断项）。
 - 本规格 §7 任务与实现同步（spec-first）。
 
@@ -165,13 +166,13 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 | R1 | Vue 与 React 行为漂移（分页/权限/错误分支） | 功能回归 | §3.2 模板逐点对照；每域验收对齐 Java 契约；复用 plus-ui 已验证封装 |
 | R2 | 破坏既有前端/后端基线 | 生产事故 | 铁律：不碰既有 React 门户/Go 后端（历史约束，现已删除）；只新增文件；每 Phase `git diff --stat` 校验 |
 | R3 | 某域发现 Java 端点缺口 | 卡域 | 记录缺口，另立后端任务，不擅自改契约 |
-| R4 | portal-vue 与 plus-ui 依赖漂移 | 维护成本 | §2.1 统一沿用 plus-ui 锁定版本 |
+| R4 | 门户与管理端依赖漂移 | 维护成本 | §2.1 统一沿用 plus-ui 锁定版本（2026-08 已合并为单工程，共享 lockfile，漂移在结构上消除） |
 | R5 | 前台 landing/卡片导航 UI 风格复杂，逐页翻译费时 | 进度 | 优先复用 plus-ui 通用组件 + AI 辅助翻译；按域分批不追求一次性全量 |
 
 ## 10. 扩展性预留（明确「暂不做」）
 
 - **不重做前端栈切换**：Vue 门户为业务门户唯一实现（历史阶段曾与 React/Go 并行共存，现已单栈化）。
-- **不把业务门户塞进 plus-ui 后台布局**：portal-vue 独立成前台风格应用。
+- **不把业务门户塞进 plus-ui 后台布局**：门户（`plus-ui/src-portal`）为前台风格独立应用（独立入口/产物，与管理端互不引用布局）。
 - **不新增/变更后端接口**：迁移只消费现有 Java 端点；发现缺口另立任务。
 - **不做统一登录/SSO 改造**：沿用现有 token 体系与 Sa-Token 会话。
 - **不引入新 UI 库**（如 Ant Design Vue）：统一 Element Plus。
@@ -184,7 +185,7 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 
 | 决策点 | 结论 |
 |---|---|
-| 对齐范围 | **仅 portal-vue 业务门户**；superadmin / changelog / plus-ui 不纳入 |
+| 对齐范围 | **仅 portal 业务门户（`plus-ui/src-portal`）**；superadmin / changelog / plus-ui 管理端不纳入 |
 | 视觉一致性 | **功能 + 交互逻辑与 React 一致，视觉沿用 Element Plus 原生风格**（不逐像素对齐） |
 | 推进顺序 | **按 React 路由顺序**：affairs → evaluation → job → lesson → library → partner → portal → scene |
 | 后端 | Java 端点已对齐（729 个，无缺失），纯前端工作量；偶发缺口按 R3 记录 |
@@ -221,7 +222,7 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 ### 11.5 验收标准（DoD）
 
 1. 历史「前端对齐差异表」缺失清单清零（changelog/superadmin 除外），Vue 特有 46 条全部分类落地；
-2. 每模块：`pnpm --filter portal-vue build` + `vue-tsc` 类型检查通过；`./scripts/spec-check.sh` 通过；
+2. 每模块：`pnpm -C plus-ui build:portal`（含 `vue-tsc` 类型检查）通过；`./scripts/spec-check.sh` 通过；
 3. 抽样页人工核对六项标准（字段/校验/分页/错误分支/权限点）；
 4. 全程不修改既有前端/后端基线（历史验收项，已随单栈迁移自然满足）；
 5. 每模块 commit 同步本 spec §11 进度与差异表状态。
@@ -239,7 +240,7 @@ Phase 0（基建）→ Phase 1（library 试点，验证模板）→ Phase 2（1
 
 > 背景：M1-M10 逐页对齐后，Vue 门户仍缺 React 的**全局布局体系**——顶部导航项与 React 不一致（多「学习社区/我的收藏」），且各管理后台域**无左侧导航**。本节记录布局框架复刻结论（阶段 1：框架先行，不改页面/路由）。
 
-**实现（只新增/修改 `frontend/portal-vue/src/layouts/`）**
+**实现（只新增/修改 `plus-ui/src-portal/layouts/`）**
 
 | 文件 | 职责 | React 对应 |
 |---|---|---|

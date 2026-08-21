@@ -10,7 +10,7 @@
 #   --clean       清空构建缓存，全量重建
 #   --force       仅配合 --clean 生效：允许 docker builder prune --all（清空宿主全局构建缓存）
 #   --skip-gates  跳过质量门禁（门禁默认开启：spec-check 无条件跑；有构建时才跑 Maven 编译
-#                 与 portal-vue/plus-ui 构建。CI 只在 push 到 master 后触发，故门禁不能只靠 CI）
+#                 与 plus-ui（admin+portal）构建。CI 只在 push 到 master 后触发，故门禁不能只靠 CI）
 #   --skip-merge  部署成功不自动合并到 master
 #
 # 所有行为自动判断:
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
     --skip-merge) SKIP_MERGE=true; shift ;;
     --help|-h)
       echo "用法: $0 --branch <分支名> [--clean] [--force] [--skip-gates] [--skip-merge]"
-      echo "  门禁默认开启（Maven 编译 + portal-vue/plus-ui 构建 + spec-check），--skip-gates 应急跳过"
+      echo "  门禁默认开启（Maven 编译 + plus-ui（admin+portal）构建 + spec-check），--skip-gates 应急跳过"
       echo "  --force 仅配合 --clean 生效：允许 docker builder prune --all（清空宿主全局构建缓存）"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
@@ -327,14 +327,14 @@ java_hash() {
     -not -path '*/target/*' -print0 2>/dev/null | sort -z | xargs -0 -r md5sum | \
     awk '{print $1}' | sort | md5sum | awk '{print $1}'
 }
-# Vue 前端指纹：portal-vue + plus-ui 源码（排除 node_modules/dist）
+# Vue 前端指纹：plus-ui 单工程双构建（admin src/ + portal src-portal/，排除 node_modules/dist/dist-portal）
 vue_hash() {
   {
-    find "$1/frontend/portal-vue" "$1/plus-ui" -type f \
-      -not -path '*/node_modules/*' -not -path '*/dist/*' \
+    find "$1/plus-ui" -type f \
+      -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/dist-portal/*' \
       -not -name '*.tsbuildinfo' -not -name '*.map' -print0 2>/dev/null
     # 只喂存在的文件：不存在的路径会让 md5sum 失败，xargs 返回 123 + pipefail 直接中止部署
-    for root_cfg in "$1/package.json" "$1/pnpm-workspace.yaml" "$1/tsconfig.base.json" "$1/.npmrc"; do
+    for root_cfg in "$1/package.json" "$1/tsconfig.base.json" "$1/.npmrc"; do
       [[ -f "$root_cfg" ]] && printf '%s\0' "$root_cfg"
     done
     # 收尾 true：最后一个文件不存在时循环退出码为 1，会让 { } 组失败并被 pipefail 传播成中止
@@ -940,7 +940,6 @@ if [[ -n "$BRANCH_NAME" || "$SYNC_MASTER" == "true" ]]; then
 fi
 
 JAVA_DIR="$BUILD_ROOT"
-PORTAL_VUE_DIR="$BUILD_ROOT/frontend/portal-vue"
 PLUS_UI_DIR="$BUILD_ROOT/plus-ui"
 MIGRATIONS_DIR="$BUILD_ROOT/db/migrations"
 
@@ -1072,7 +1071,7 @@ else
 fi
 
 # ════════════════════════════════════════════
-# 5. 构建前端（变更自动检测）：portal-vue 业务门户 + plus-ui 管理端
+# 5. 构建前端（变更自动检测）：plus-ui 单工程双构建——admin 管理端（dist）+ portal 业务门户（dist-portal）
 #    （产物 rsync 到 $DEPLOY_DIR/web/，由 nginx 容器挂载，不构建前端镜像）
 # ════════════════════════════════════════════
 FRONTEND_HASH=$(vue_hash "$BUILD_ROOT")
@@ -1084,10 +1083,10 @@ BUILD_FRONTEND=true
   [[ -f "$DEPLOY_DIR/web/portal/index.html" && -f "$DEPLOY_DIR/web/plus-ui/index.html" ]] && BUILD_FRONTEND=false
 
 if $BUILD_FRONTEND; then
-  log "构建前端（portal-vue + plus-ui）"
+  log "构建前端（plus-ui：admin + portal 双构建）"
 
   if [[ "$GATES_FLAG" == "true" ]]; then
-    log "  质量门禁: portal-vue（vue-tsc + vite build）/ plus-ui（vite build）"
+    log "  质量门禁: portal（vue-tsc + vite build）/ plus-ui admin（vite build）"
   else
     log "  质量门禁已跳过（--skip-gates）：CI 仅在合并后触发，请自行确认本地已过门禁"
     # 审计痕迹：记录谁在何时跳过门禁（多 Agent 环境事后可追责/回查）
@@ -1097,26 +1096,34 @@ if $BUILD_FRONTEND; then
   fi
 
   # 离线依赖包：offline/node_modules.tar.gz（联网机按 offline/README.md 预生成）。
-  # 命中则按仓库相对路径解压 portal-vue/plus-ui 依赖，跳过联网 pnpm install
+  # 命中则按仓库相对路径解压 plus-ui 依赖（admin/portal 共用一份 node_modules），跳过联网 pnpm install
   OFFLINE_NODE_MODULES="$OFFLINE_DIR/node_modules.tar.gz"
   if [[ -f "$OFFLINE_NODE_MODULES" ]]; then
-    log "  离线依赖包命中，解压 portal-vue/plus-ui node_modules（跳过 pnpm install）..."
+    log "  离线依赖包命中，解压 plus-ui node_modules（跳过 pnpm install）..."
     tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" \
-      frontend/portal-vue/node_modules plus-ui/node_modules 2>/dev/null \
+      plus-ui/node_modules 2>/dev/null \
       || tar -xzf "$OFFLINE_NODE_MODULES" -C "$BUILD_ROOT" 2>/dev/null || true
   fi
 
-  # ── portal-vue 业务门户（build 内含 vue-tsc 类型检查）──
-  log "  构建 portal-vue（业务门户，根路径 base）..."
-  # node_modules 存在但缺关键 devDeps（vue-tsc）也要重装：上一轮失败残留的不完整安装
-  # （NODE_ENV=production 跳过 devDeps）会骗过目录存在性检查，导致 vue-tsc 一直缺失
-  if [[ ! -d "$PORTAL_VUE_DIR/node_modules" || ! -x "$PORTAL_VUE_DIR/node_modules/.bin/vue-tsc" ]]; then
+  # ── plus-ui 依赖安装（admin + portal 共用同一份 node_modules，装一次）──
+  # plus-ui 声明 packageManager pnpm@10.34.5 且 engines.pnpm >=10，全局 pnpm 9 不兼容
+  # （ERR_PNPM_UNSUPPORTED_ENGINE）→ 用 npx 拉取 pnpm@10 执行安装与构建
+  PLUS_PNPM="pnpm"
+  if grep -q '"packageManager": "pnpm@10' "$PLUS_UI_DIR/package.json" 2>/dev/null; then
+    PLUS_PNPM="npx --yes pnpm@10.34.5"
+  fi
+  # node_modules 存在但缺关键 devDeps（vite/vue-tsc）也要重装：上一轮失败残留的不完整安装
+  # （NODE_ENV=production 跳过 devDeps）会骗过目录存在性检查，导致 vite/vue-tsc 一直缺失
+  if [[ ! -d "$PLUS_UI_DIR/node_modules" || ! -x "$PLUS_UI_DIR/node_modules/.bin/vite" || ! -x "$PLUS_UI_DIR/node_modules/.bin/vue-tsc" ]]; then
     # env -u NODE_ENV：宿主若全局导出 NODE_ENV=production，pnpm 会跳过 devDependencies
     # （vue-tsc/typescript 缺失 → vue-tsc --noEmit 找不到命令 → 构建必失败，实测复现）
-    (cd "$PORTAL_VUE_DIR" && env -u NODE_ENV pnpm install --frozen-lockfile 2>/dev/null) || \
-    { warn "portal-vue frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
-      (cd "$PORTAL_VUE_DIR" && env -u NODE_ENV pnpm install --no-frozen-lockfile) || die "portal-vue 依赖安装失败"; }
+    (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --frozen-lockfile 2>/dev/null) || \
+    { warn "plus-ui frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
+      (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
   fi
+
+  # ── portal 业务门户（build:portal 内含 vue-tsc 类型检查，产物 plus-ui/dist-portal）──
+  log "  构建 portal（业务门户，根路径 base）..."
   PORTAL_LOG="$DEPLOY_DIR/.build-portal.log"
   if command -v systemd-run >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
     # 内存护栏：Vue 构建（vue-tsc + vite build）峰值可达数 GB，用瞬态单元绕开父 cgroup 钳制
@@ -1128,47 +1135,37 @@ if $BUILD_FRONTEND; then
          --property=MemoryAccounting=yes \
          --property=MemoryMax=6G --property=MemorySwapMax=2G \
          --setenv=NODE_ENV=production \
-         "${VITE_SETENV[@]}" -- bash -c "cd '$PORTAL_VUE_DIR' && pnpm build" \
+         "${VITE_SETENV[@]}" -- bash -c "cd '$PLUS_UI_DIR' && $PLUS_PNPM build:portal" \
          >"$PORTAL_LOG" 2>&1; then
       rc=$?
       tail -n 40 "$PORTAL_LOG" >&2 || true
       [[ $rc -eq 137 || $rc -eq 143 ]] && \
-        warn "portal-vue 疑似内存超限（退出码 $rc）：错峰构建"
-      die "portal-vue 构建失败（完整日志: $PORTAL_LOG）"
+        warn "portal 疑似内存超限（退出码 $rc）：错峰构建"
+      die "portal 构建失败（完整日志: $PORTAL_LOG）"
     fi
   else
     # 直连回退路径：本脚本已 set -a source .env，VITE_* 已在环境中
-    (cd "$PORTAL_VUE_DIR" && NODE_ENV=production pnpm build >"$PORTAL_LOG" 2>&1) \
-      || { tail -n 40 "$PORTAL_LOG" >&2 || true; die "portal-vue 构建失败（完整日志: $PORTAL_LOG）"; }
+    (cd "$PLUS_UI_DIR" && NODE_ENV=production $PLUS_PNPM build:portal >"$PORTAL_LOG" 2>&1) \
+      || { tail -n 40 "$PORTAL_LOG" >&2 || true; die "portal 构建失败（完整日志: $PORTAL_LOG）"; }
   fi
-  log "    portal-vue 构建完成"
+  log "    portal 构建完成"
 
-  # ── plus-ui 管理端 ──
-  log "  构建 plus-ui（RuoYi 管理端，/plus-ui/ 子路径）..."
-  # plus-ui 声明 packageManager pnpm@10.34.5 且 engines.pnpm >=10，全局 pnpm 9 不兼容
-  # （ERR_PNPM_UNSUPPORTED_ENGINE）→ 用 npx 拉取 pnpm@10 执行安装与构建
-  PLUS_PNPM="pnpm"
-  if grep -q '"packageManager": "pnpm@10' "$PLUS_UI_DIR/package.json" 2>/dev/null; then
-    PLUS_PNPM="npx --yes pnpm@10.34.5"
-  fi
-  # 同 portal-vue：node_modules 存在但缺关键 devDeps（vite）也要重装
-  if [[ ! -d "$PLUS_UI_DIR/node_modules" || ! -x "$PLUS_UI_DIR/node_modules/.bin/vite" ]]; then
-    # env -u NODE_ENV 避免宿主 NODE_ENV=production 跳过 devDependencies
-    (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --frozen-lockfile 2>/dev/null) || \
-    { warn "plus-ui frozen-lockfile 安装失败，降级 --no-frozen-lockfile"
-      (cd "$PLUS_UI_DIR" && env -u NODE_ENV $PLUS_PNPM install --no-frozen-lockfile) || die "plus-ui 依赖安装失败"; }
-  fi
+  # ── plus-ui admin 管理端 ──
+  log "  构建 plus-ui admin（RuoYi 管理端，/plus-ui/ 子路径）..."
   PLUS_LOG="$DEPLOY_DIR/.build-plus-ui.log"
-  (cd "$PLUS_UI_DIR" && NODE_ENV=production $PLUS_PNPM build >"$PLUS_LOG" 2>&1) \
+  (cd "$PLUS_UI_DIR" && NODE_ENV=production $PLUS_PNPM build:admin >"$PLUS_LOG" 2>&1) \
     || { tail -n 40 "$PLUS_LOG" >&2 || true; die "plus-ui 构建失败（完整日志: $PLUS_LOG）"; }
-  log "    plus-ui 构建完成"
+  log "    plus-ui admin 构建完成"
 
   # 产物同步到部署目录（nginx 容器 bind mount $DEPLOY_DIR/web/）。
   # 必须 rsync 增量同步、**禁止 rm -rf 重建目录**：删除源目录会使运行中 nginx 的
   # bind mount 指向已删 inode → 挂载点变空 → index.html 404 → try_files 循环 500 → 健康检查失败
   # （远程部署实测：rm -rf + cp 后 nginx unhealthy，部署回滚）。
   mkdir -p "$DEPLOY_DIR/web/portal" "$DEPLOY_DIR/web/plus-ui"
-  rsync -a --delete "$PORTAL_VUE_DIR/dist/" "$DEPLOY_DIR/web/portal/"
+  rsync -a --delete "$PLUS_UI_DIR/dist-portal/" "$DEPLOY_DIR/web/portal/"
+  # portal 构建入口为 plus-ui/portal.html（避免与 admin 的 index.html 冲突），产物同名；
+  # nginx try_files 约定找 index.html，rsync 后重命名
+  mv -f "$DEPLOY_DIR/web/portal/portal.html" "$DEPLOY_DIR/web/portal/index.html"
   rsync -a --delete "$PLUS_UI_DIR/dist/" "$DEPLOY_DIR/web/plus-ui/"
   PENDING_FRONTEND_HASH="$FRONTEND_HASH"
 else

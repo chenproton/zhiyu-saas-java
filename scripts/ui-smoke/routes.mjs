@@ -1,6 +1,6 @@
 /**
  * 路由发现：静态枚举 + 动态 [id] 路由（从后端拉真实实体 id）+ git-diff 定向圈定。
- * 单栈（Java+Vue）后：路由表从 frontend/portal-vue/src/router/index.ts 提取
+ * 单栈（Java+Vue）后：路由表从 plus-ui/src-portal/router/index.ts 提取
  * （Vue Router 绝对/相对 path 统一拼接；:id 动态段转 [id] 匹配 BUILTIN_DYNAMIC_ROUTES）。
  */
 import { promises as fs } from 'fs'
@@ -8,9 +8,9 @@ import { execFileSync } from 'child_process'
 import path from 'path'
 import { PROJECT_ROOT } from './config.mjs'
 
-const ROUTER_FILE = path.join(PROJECT_ROOT, 'frontend', 'portal-vue', 'src', 'router', 'index.ts')
+const ROUTER_FILE = path.join(PROJECT_ROOT, 'plus-ui', 'src-portal', 'router', 'index.ts')
 
-// 从 portal-vue router 提取全部 path（相对路径拼接 '/' 前缀；空串/纯 redirect 跳过）
+// 从 portal router 提取全部 path（相对路径拼接 '/' 前缀；空串/纯 redirect 跳过）
 async function extractRouterPaths() {
   let src
   try { src = await fs.readFile(ROUTER_FILE, 'utf8') } catch { return [] }
@@ -144,7 +144,7 @@ export async function resolveDynamicRoutes(cfg, baseUrl, token) {
   return resolved
 }
 
-// git-diff 圈定受影响路由：Vue 为单 router 表 + 组件引用复杂，改动 portal-vue/plus-ui
+// git-diff 圈定受影响路由：Vue 为单 router 表 + 组件引用复杂，改动 plus-ui（admin/portal）
 // 一律全量巡检（不做组件级反查，避免圈定不准漏检）
 export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
   let files = []
@@ -164,8 +164,7 @@ export async function scopeRoutesByGitDiff(routes, cfg, gitRef) {
       return routes
     }
   }
-  const touched = files.some(f =>
-    f.startsWith('frontend/portal-vue/') || f.startsWith('plus-ui/') || f.startsWith('frontend/'))
+  const touched = files.some(f => f.startsWith('plus-ui/'))
   if (!touched) {
     console.warn('  [git-diff] 前端无改动，跳过巡检（或回退为全量）')
   } else {

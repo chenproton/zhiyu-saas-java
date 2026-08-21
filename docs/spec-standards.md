@@ -54,7 +54,7 @@ Spec 分两级，按「覆盖范围」与「该文档在何时被阅读」区分
 
 任何「功能开发任务」只有在同时满足以下条件才算完成：
 
-1. **代码** 实现 spec 描述的能力，通过 `deploy.sh` 质量门禁（Maven 编译 + portal-vue/plus-ui 构建 + spec-check，见 `AGENTS.md` 4.2）。
+1. **代码** 实现 spec 描述的能力，通过 `deploy.sh` 质量门禁（Maven 编译 + plus-ui（admin+portal）构建 + spec-check，见 `AGENTS.md` 4.2）。
 2. **规格** 已同步：新增能力写入对应 spec；变更行为更新 spec 对应章节。
 3. **测试** 至少一种（controller/service/mapper 单测，见根 `AGENTS.md` 第二部分）。
 4. **契约** API 变更同步 `02-api-contract.md` 或子平台 spec 的 API 章节；migration 配对 `.down.sql`。

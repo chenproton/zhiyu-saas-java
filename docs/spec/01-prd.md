@@ -242,7 +242,7 @@
 |----|------|
 | 浏览器 | 现代浏览器（Chrome/Edge/Firefox/Safari 近 2 个主版本）；移动端适配已完成 3 轮全量扫描 |
 | 后端运行时 | Java 21 / Spring Boot 4（CI 校验 Maven 编译） |
-| 前端运行时 | Node ≥ 20（CI 用 22）、pnpm；Vue 业务门户（portal-vue，Vue 3.5 + Element Plus）+ 管理端（plus-ui，RuoYi 框架） |
+| 前端运行时 | Node ≥ 20（CI 用 22）、pnpm；`plus-ui` 单工程双构建——Vue 业务门户（`src-portal`，Vue 3.5 + Element Plus）+ 管理端（`src`，RuoYi 框架） |
 | 数据库 | MySQL 8.0（docker 3306 映射）；Redis 7（必需，后端启动依赖，见 compose healthcheck） |
 | 文档预览 | kkfileview 服务（docker compose profile，默认启用，端口 8012）；浏览器原生可渲染格式（图片/PDF 等）直接展示，其余经 kkfileview 转换预览（前端 `/kkfileview/onlinePreview?url=<签名URL>`，见 `02-api-contract.md` §3.6） |
 
@@ -251,7 +251,7 @@
 - 后端分层：controller（HTTP 适配）→ service（编排+事务）→ mapper（数据访问，无 DAO 层）；Java 框架契约详见根 `AGENTS.md` 第二部分
 - 新增 controller 禁止拼 SQL/持有 DB 句柄；新接口必须附带 controller/service/mapper 测试至少一种
 - 前端组件规范见 `AGENTS.md` 第二部分（Vue 门户/管理端组件体系）
-- 质量门禁：`deploy.sh` 默认开启——Maven 编译 + portal-vue/plus-ui 构建 + spec-check（见根 `AGENTS.md` 4.2）
+- 质量门禁：`deploy.sh` 默认开启——Maven 编译 + plus-ui（admin+portal）构建 + spec-check（见根 `AGENTS.md` 4.2）
 
 ---
 
@@ -276,7 +276,7 @@
 ### 6.2 参考资料
 
 - 架构分层：根 `AGENTS.md` 第二部分（Java 框架契约）
-- 前端组件：`frontend/portal-vue`（Element Plus）与 `plus-ui`（RuoYi 框架）
+- 前端组件：`plus-ui/src-portal`（Element Plus）与 `plus-ui/src`（RuoYi 框架）
 - 审查指引：`docs/code-review-checklist.md`（审查清单）
 - 接口契约：`docs/spec/02-api-contract.md`
 - 数据库设计：`docs/spec/04-database-schema.md`

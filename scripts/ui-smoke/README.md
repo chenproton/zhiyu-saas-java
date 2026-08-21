@@ -68,7 +68,7 @@ node scripts/ui-smoke/ui-smoke.mjs --git-diff --click-only
 ## 覆盖范围
 
 - **角色**：`school`/`teacher`/`student` 走 portal 登录页（`/portal/login`）；`partner`（企业端）为独立认证门户（`/partner/login`），巡检 `/partner` 下全部页面（workspace/enterprise/experts/members/schools/cooperation/tasks/settings，可在 `smoke.config.json` 用 `partnerRoutes` 覆盖）
-- **静态路由**：自动从 `frontend/portal-vue/src/router/index.ts` 提取（绝对/相对 path 统一拼接，动态段 `:id` 转 `[id]` 交由动态路由处理）
+- **静态路由**：自动从 `plus-ui/src-portal/router/index.ts` 提取（绝对/相对 path 统一拼接，动态段 `:id` 转 `[id]` 交由动态路由处理）
 - **动态路由**：从后端 API 拉真实实体 id，直接访问 `[id]` 详情/编辑页（含岗位编辑页 `/job/positions/[id]/edit`、联盟成果/协议/项目编辑页 `/portal/apps/alliance/{achievements,agreements,projects}/[id]/edit`、企业专家 `/partner/experts/[id]([/edit])`、企业共建 `/partner/co-build/positions/scenes/[id]/edit([/tasks])` 等；portal/partner 各自用本域 token 解析）
 - **每页交互**：点完所有唯一可点元素（按钮/链接/Tab，含弹窗内按钮），**下拉菜单项（Radix `[role="menu"]`/`menuitem`）在菜单打开期间立即点击**（菜单项随菜单关闭即卸载，无法走队列延迟点击；重开触发器以点完多个项）；**列表行内按钮去重**：同一按钮类型只点前 `maxRowClicks` 行（默认 1 行，大表页从 5000+ 元素降到几十，SMOKE_ 测试数据行豁免以保 CRUD 覆盖）；弹窗/下拉打开后 Esc 关闭，跳转后回访继续，点击产生的新元素（Tab 切换等）增量补充
 - **CRUD 测试**（默认）：识别"创建/新增/编辑/删除/启用/禁用"类按钮，创建数据时使用 `SMOKE_` 前缀，编辑/删除/启用/禁用只操作带 `SMOKE_` 标记的测试数据行，最后自动清理；**独立编辑页表单测试仅对巡检创建的 `SMOKE_` 实体执行**（真实实体编辑页只点击不提交，防止改名/覆盖真实数据）

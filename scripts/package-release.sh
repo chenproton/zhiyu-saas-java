@@ -11,7 +11,7 @@
 #
 # 说明:
 #   - 在可联网的开发机上执行（需要 docker / JDK 21 / pnpm，构建 java-backend 镜像与
-#     portal-vue/plus-ui 产物；镜像构建依赖本地已有 ubuntu:24.04 与 nginx:1.27-alpine，
+#     plus-ui（admin+portal）产物；镜像构建依赖本地已有 ubuntu:24.04 与 nginx:1.27-alpine，
 #     缺失时会从 offline/docker-images 加载）
 #   - 客户服务器（全新 Ubuntu 24.04 x86_64）无需任何开发工具链，
 #     复制交付目录后执行 ./install.sh 即可
@@ -85,29 +85,28 @@ rsync -aL --exclude='lib/src.zip' --exclude='demo' --exclude='sample' \
 cp "$ROOT/deploy/docker/java-backend.Dockerfile" "$TMPCTX/Dockerfile"
 docker build -t "zhiyu-java-backend:$VERSION" -f "$TMPCTX/Dockerfile" "$TMPCTX" 2>&1 | tail -3
 
-# ── 3. 构建前端产物（portal-vue 业务门户 + plus-ui 管理端，dist 直接进交付目录）──
-log "构建前端产物（portal-vue + plus-ui）..."
-rsync -a --exclude=.git --exclude=node_modules --exclude=dist \
+# ── 3. 构建前端产物（plus-ui 单工程双构建：portal dist-portal + admin dist，直接进交付目录）──
+log "构建前端产物（plus-ui：admin + portal）..."
+rsync -a --exclude=.git --exclude=node_modules --exclude=dist --exclude=dist-portal \
   --exclude='*.tsbuildinfo' --exclude=offline \
   --exclude=ruoyi-admin --exclude=ruoyi-api --exclude=ruoyi-common \
   --exclude=ruoyi-modules --exclude=ruoyi-extend --exclude=script \
   "$ROOT/" "$BUILD_DIR/"
 
-# portal-vue（build 内含 vue-tsc 类型检查）
-(cd "$BUILD_DIR/frontend/portal-vue" && pnpm install --offline --silent 2>/dev/null) || \
-  (cd "$BUILD_DIR/frontend/portal-vue" && pnpm install --silent 2>/dev/null) || \
-  die "portal-vue 依赖安装失败"
-(cd "$BUILD_DIR/frontend/portal-vue" && NODE_ENV=production pnpm build >/dev/null) || die "portal-vue 构建失败"
-[[ -d "$BUILD_DIR/frontend/portal-vue/dist" ]] || die "portal-vue 产物缺失：dist"
-
-# plus-ui 管理端
-(cd "$BUILD_DIR/plus-ui" && pnpm install --offline --silent 2>/dev/null) || \
+# plus-ui 依赖安装（admin + portal 共用同一份 node_modules）
 # plus-ui 声明 packageManager pnpm@10.34.5（engines.pnpm >=10），全局 pnpm 9 不兼容 → npx 拉取 pnpm@10
 PLUS_PNPM="pnpm"
 grep -q '"packageManager": "pnpm@10' "$BUILD_DIR/plus-ui/package.json" 2>/dev/null && PLUS_PNPM="npx --yes pnpm@10.34.5"
-(cd "$BUILD_DIR/plus-ui" && $PLUS_PNPM install --silent 2>/dev/null) || \
+(cd "$BUILD_DIR/plus-ui" && $PLUS_PNPM install --offline --silent 2>/dev/null) || \
+  (cd "$BUILD_DIR/plus-ui" && $PLUS_PNPM install --silent 2>/dev/null) || \
   die "plus-ui 依赖安装失败"
-(cd "$BUILD_DIR/plus-ui" && NODE_ENV=production $PLUS_PNPM build >/dev/null) || die "plus-ui 构建失败"
+
+# portal 业务门户（build:portal 内含 vue-tsc 类型检查）
+(cd "$BUILD_DIR/plus-ui" && NODE_ENV=production $PLUS_PNPM build:portal >/dev/null) || die "portal 构建失败"
+[[ -d "$BUILD_DIR/plus-ui/dist-portal" ]] || die "portal 产物缺失：dist-portal"
+
+# plus-ui admin 管理端
+(cd "$BUILD_DIR/plus-ui" && NODE_ENV=production $PLUS_PNPM build:admin >/dev/null) || die "plus-ui 构建失败"
 [[ -d "$BUILD_DIR/plus-ui/dist" ]] || die "plus-ui 产物缺失：dist"
 
 # ── 4. 导出镜像 ──
@@ -127,7 +126,9 @@ cp -r "$ROOT/deploy/nginx" "$PKG_DIR/deploy/nginx"
 # 容器网关配置必须一起带：compose 的 nginx 服务挂载 ./nginx-container/conf.d，缺失则容器起不来
 cp -r "$ROOT/deploy/nginx-container" "$PKG_DIR/deploy/nginx-container"
 # 前端 dist（nginx 容器挂载 $DEPLOY_DIR/web/）
-cp -r "$BUILD_DIR/frontend/portal-vue/dist" "$PKG_DIR/web/portal"
+cp -r "$BUILD_DIR/plus-ui/dist-portal" "$PKG_DIR/web/portal"
+# portal 构建入口为 portal.html，nginx try_files 约定找 index.html，复制后重命名
+mv -f "$PKG_DIR/web/portal/portal.html" "$PKG_DIR/web/portal/index.html"
 cp -r "$BUILD_DIR/plus-ui/dist" "$PKG_DIR/web/plus-ui"
 cp "$ROOT/deploy/release/install.sh" "$ROOT/deploy/release/start.sh" \
    "$ROOT/deploy/release/stop.sh" "$ROOT/deploy/release/README.md" "$PKG_DIR/"

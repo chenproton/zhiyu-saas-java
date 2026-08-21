@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // portal 沿用原 frontend/portal-vue 的 strict 全开设置（主 tsconfig.json 是 plus-ui 管理端的宽松模式，互不影响）
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "allowJs": false,
+    "sourceMap": false,
+    "removeComments": false,
+    "useDefineForClassFields": true,
+    "isolatedModules": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.portal.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src-portal/*"]
+    },
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src-portal/**/*.ts", "src-portal/**/*.d.ts", "src-portal/**/*.vue", "vite/portal.config.ts"]
+}

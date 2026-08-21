@@ -6,7 +6,7 @@
  * - 评价标准模板：/scene/rubric-templates（taskEvaluationApi.listTemplates/createTemplate/updateTemplate）
  * - 企业导师选项：/alliance/experts/mentor-options（allianceExpertApi.mentorOptions）
  * - 现场问答题：/evaluation/random-draw-questions（randomDrawQuestionApi）
- * 其余（试卷/题库/题目/专业/知识点/能力点）复用 portal-vue 既有 api 模块。
+ * 其余（试卷/题库/题目/专业/知识点/能力点）复用门户既有 api 模块。
  */
 import { request, buildQuery } from '@/api/http';
 import type { ListResponse } from '@/api/http';

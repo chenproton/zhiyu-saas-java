@@ -2,7 +2,7 @@
 
 > 分支模型说明：本仓库**主线只有 `master`**，按「分支隔离 + 部署成功自动合并 master」协作（见第四节）。
 >
-> 本仓库为**单栈架构**：**Java 后端多模块 Maven 工程位于仓库根目录**（`pom.xml` + `mvnw` + `ruoyi-*/` + `script/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21，布局与上游框架技术方案对齐），共用 MySQL 8.0，配套两套 Vue 前端：**Vue 业务门户**（`frontend/portal-vue`）+ **Vue 管理端**（`plus-ui/`，RuoYi 框架，位于仓库根）。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
+> 本仓库为**单栈架构**：**Java 后端多模块 Maven 工程位于仓库根目录**（`pom.xml` + `mvnw` + `ruoyi-*/` + `script/`，基于 base-dev-framework6-java 框架，`org.dromara` 包名，Spring Boot 4 / Java 21，布局与上游框架技术方案对齐），共用 MySQL 8.0，前端为 **`plus-ui/` 单工程双构建**（RuoYi 框架，位于仓库根）：**admin 管理端**（`plus-ui/src` → `dist`）+ **portal 业务门户**（`plus-ui/src-portal` → `dist-portal`），一份 package.json / lockfile / node_modules，运行时仍是两个独立 SPA。Go 后端与 React 前端已于 2026-08 完成迁移并删除。
 > 开发契约分两部分：第一部分为仓库级开发契约（spec-first / 部署 / 运维），第二部分为 Java 后端框架契约。按所改模块选择对应契约执行。
 
 ### 顶层目录结构
@@ -15,9 +15,7 @@
 ├── ruoyi-modules/*    # 业务模块：system / ai / workflow / job / gen / demo / zhiyu
 ├── ruoyi-extend/*     # 独立部署服务：monitor-admin / snailjob-server / snailai-server
 ├── script/            # 框架初始化 SQL、Docker Compose、Nginx 配置
-├── plus-ui/           # Vue 管理端（RuoYi 框架，Java 配套）
-├── frontend/
-│   └── portal-vue/    # Vue 业务门户（Element Plus + Pinia，Java 配套）
+├── plus-ui/           # Vue 管理端 + 业务门户双应用工程（admin：src/ → dist；portal：src-portal/ → dist-portal）
 ├── db/migrations/     # 数据库迁移（up/down 配对 SQL，deploy.sh 纯 mysql 执行）
 ├── docs/              # 全量文档（spec、ADR、规范）
 ├── deploy/            # docker-compose / nginx / Dockerfile（Java+Vue 单栈编排）
@@ -75,7 +73,7 @@
 
 - **规格先行（spec-first）**：功能开发先读 `docs/spec/` 对齐意图再写代码；新增/变更行为必须同步 spec。见 [`docs/spec-standards.md`](docs/spec-standards.md)。
 - **简单优先**：不过度防御；小概率异常宁可容忍；核心业务加锁防重复，普通业务允许报错或重复插入；核心接口保流畅，非核心允许等待。
-- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。前端复用查 portal-vue `src/components/` 与 `src/views/*/_components/`（React 时代速查表 `docs/components.md`/`docs/forms-tables.md` 已标历史墓碑）；后端复用查 `ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/core/` 与 `.codex/skills/` 框架技能（`docs/backend-reuse.md` 已标历史墓碑）。
+- **组件复用优先**：接到需求先判断能否复用现有组件/函数/模式，能复用直接使用；需抽公共组件先向用户提方案、经确认后实施。前端复用查 plus-ui `src-portal/components/` 与 `src-portal/views/*/_components/`（React 时代速查表 `docs/components.md`/`docs/forms-tables.md` 已标历史墓碑）；后端复用查 `ruoyi-modules/ruoyi-zhiyu/src/main/java/org/dromara/zhiyu/core/` 与 `.codex/skills/` 框架技能（`docs/backend-reuse.md` 已标历史墓碑）。
 - **性能自检（温和，写代码时自问，不硬拦）**：涉及列表/批量/聚合的代码，写完自问——① 有没有循环内逐条 SQL（N+1）？应改 JOIN / `IN($N)` / 批量；② 列表/聚合查询有没有显式 LIMIT 或「数据量有界」的论证？③ 新增后台任务/goroutine 有没有超时 + panic 兜底 + 去重？④ 新增外部 HTTP 调用有没有设 timeout？「简单优先」指代码形状简单（一行 JOIN 与十行循环一样简单），不代表可以先写 N+1 再说。详见 [`docs/code-review-checklist.md`](docs/code-review-checklist.md)。
 
 ## 三、硬性架构约束（安全 + 架构合理的落地红线）
@@ -105,14 +103,14 @@
 3. `./deploy.sh --branch <分支名>`（可选 `--clean` / `--force` / `--skip-merge` / `--skip-gates`）
 4. `cd / && git worktree remove /tmp/<agent>`
 
-deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + portal-vue/plus-ui）；分两段启动（先数据层→备份→迁移→框架表初始化→再业务容器）；健康门禁 + 业务冒烟（门户/管理端/API/Redis/DB/鉴权探针），任一失败回滚旧镜像且不合并 master；部署锁保证并发串行；**建库建表（db/migrations 纯 mysql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh**。完整执行顺序、密钥注入边界、备份恢复见 [`docs/spec/03-development-plan.md`](docs/spec/03-development-plan.md) §5 部署契约。**质量门禁默认开启**（Maven 编译 + portal-vue/plus-ui 构建 + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
+deploy.sh 自动：源码 hash 比对只构建变更部分（Java Maven + plus-ui（admin+portal 双构建））；分两段启动（先数据层→备份→迁移→框架表初始化→再业务容器）；健康门禁 + 业务冒烟（门户/管理端/API/Redis/DB/鉴权探针），任一失败回滚旧镜像且不合并 master；部署锁保证并发串行；**建库建表（db/migrations 纯 mysql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh**。完整执行顺序、密钥注入边界、备份恢复见 [`docs/spec/03-development-plan.md`](docs/spec/03-development-plan.md) §5 部署契约。**质量门禁默认开启**（Maven 编译 + plus-ui（admin+portal）构建 + spec-check），`--skip-gates` 仅应急跳过——CI（`.github/workflows/ci.yml`）触发条件是 push 到 master，而部署成功即直推 master，只靠 CI 等于事后报警。
 
 ### 4.2 提交前必跑（代码改动）
 
 ```bash
 ./mvnw compile -q            # Java 后端编译（JDK 21）
-cd frontend/portal-vue && pnpm build             # 业务门户（含 vue-tsc 类型检查）
-cd plus-ui && pnpm build                # 管理端
+cd plus-ui && pnpm build:portal         # 业务门户（含 vue-tsc 类型检查，产物 dist-portal）
+cd plus-ui && pnpm build:admin          # 管理端（产物 dist）
 ./scripts/spec-check.sh   # spec 校验共 14 项：阻断级（分层红线/LLM 直连/migration 配对/spec 五层制品/ADR 索引双向/安全红线/schema↔migrations 编号/表数/机器码/spec 随代码变更/新端点带测试）+ 提示级（路由↔契约覆盖/验收流程一致性/新端点租户校验提示/down 不可逆标注/XSS），详见 spec-standards.md §九
 ```
 
@@ -176,7 +174,7 @@ migration 需配对 `.down.sql` 并登记 `docs/spec/04-database-schema.md` §5�
 
 ## 项目定位
 
-本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于 ``，配套前端为 Vue 业务门户 `frontend/portal-vue`（Element Plus + Pinia）与 Vue 管理端 `plus-ui`（RuoYi 框架），代码生成器内置模板产出前端骨架。
+本项目 **base-dev-framework6-java** 是**公司统一研发基础框架**（`org.dromara` 包名、Spring Boot 4 / Java 21 / Jakarta EE 10），**前后端一体化单仓库**：本仓库中 Java 后端多模块 Maven 工程位于仓库根，配套前端为 `plus-ui` 单工程双构建——Vue 管理端（`plus-ui/src`，RuoYi 框架）与 Vue 业务门户（`plus-ui/src-portal`，Element Plus + Pinia），代码生成器内置模板产出前端骨架。
 
 > 🔴 **本项目遵循框架约定**：包名 `org.dromara`，**三层架构无 DAO 层**（Controller→Service→Mapper，直接用 `BaseMapperPlus`），Entity 继承 `BaseEntity`，查询用 `QueryBuilder.lambda`，标准 REST 路径（`/list`、`/{id}`）。不要套用 `plus.ruoyi` / DAO 层 / `PlusLambdaQuery` / `/pageXxx` 等其它衍生版约定。
 

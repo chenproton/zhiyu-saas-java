@@ -7,7 +7,7 @@
  * （不自造假数据；接入真实接口时两侧同步改）。
  *
  * 外部平台地址对齐原 React 版 external-links.ts 的 SCENE_PLATFORM_URL
- * （portal-vue 未收录 external-links，这里按同一环境变量 + 同一兜底地址取值）。
+ * （门户未收录 external-links，这里按同一环境变量 + 同一兜底地址取值）。
  */
 
 /* ==================== 备课关联 ==================== */

@@ -57,7 +57,7 @@
 
 | 自动门禁（deploy.sh / CI） | 本清单补足（语义） |
 |---|---|
-| Maven 编译 + portal-vue/plus-ui 构建 + spec-check | 分层红线、越权、生命周期、竞态、过度设计 |
-| portal-vue / plus-ui 类型检查 / lint / 单测 | 「代码看不出的」意图偏离、spec 不一致 |
+| Maven 编译 + plus-ui（admin+portal）构建 + spec-check | 分层红线、越权、生命周期、竞态、过度设计 |
+| plus-ui（admin+portal）类型检查 / lint / 单测 | 「代码看不出的」意图偏离、spec 不一致 |
 
 > 自动门禁建立的是「编译/类型/格式正确」，本清单建立的是「语义/契约/意图正确」。两者缺一不可。

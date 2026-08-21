@@ -251,7 +251,7 @@
  * 知识点/能力点绑定），并支持「保存评价标准」立即落库（persistStandard）。
  *
  * 受控组件：props.value 为 EvalRuleConfig，任何修改都通过 emit('change', clone(local)) 上抛，
- * 与 portal-vue 现有 EvalMethodConfig / 各 selector 组件保持一致的受控约定。
+ * 与门户现有 EvalMethodConfig / 各 selector 组件保持一致的受控约定。
  */
 import { computed, ref, watch } from 'vue';
 import {

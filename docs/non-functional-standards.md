@@ -31,7 +31,7 @@
 
 ## 4. 测试策略
 
-- **门禁组合**（deploy.sh / CI 强制）：后端 `./mvnw compile -q`；前端 `cd frontend/portal-vue && pnpm build` + `cd plus-ui && pnpm build`；另跑 `./scripts/spec-check.sh`（见 AGENTS.md 4.2）。
+- **门禁组合**（deploy.sh / CI 强制）：后端 `./mvnw compile -q`；前端 `cd plus-ui && pnpm build:portal` + `cd plus-ui && pnpm build:admin`；另跑 `./scripts/spec-check.sh`（见 AGENTS.md 4.2）。
 - **分层测试要求**（AGENTS.md 3.1）：新接口必须附带 controller/service/mapper 测试**至少一种**；测试要断言「目标回归」失败（code-review-checklist.md 四），不写复述实现的假断言。
 - **必测清单**：
   1. 状态机流转（`allowedStatusTransitions`）——非法流转 409/400 断言；

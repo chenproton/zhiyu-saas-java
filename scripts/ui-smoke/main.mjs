@@ -98,7 +98,7 @@ async function login(ctx, page, cfg, role, listeners) {
   })
 
   // 提交并等待响应：先注册监听，再点击（监听器在 resolve 时自移除，重复调用安全）
-  // Vue 门户（portal-vue）提交按钮为 el-button（class=submit-btn），无 type=submit；
+  // Vue 门户（plus-ui/src-portal）提交按钮为 el-button（class=submit-btn），无 type=submit；
   // 兼容两种形态：优先 button[type=submit]，回退 .submit-btn
   const submit = () => {
     const wait = submitAndWait()

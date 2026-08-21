@@ -44,7 +44,7 @@
 | Token key | `zhiyu-portal-token` | `zhiyu-partner-token` |
 | API 前缀 | `/api/v1` + `RequirePlatform('portal')` | `/api/v1/partner/*` + `RequirePlatform('partner')` |
 | 角色/权限 | roles + user_roles + permissions + 菜单权限 | 企业租户内种子角色 `enterprise_admin` / `enterprise_member`，复用同一套机制 |
-| 导航菜单 | `frontend/portal-vue/src/layouts/navigation-config.ts` | `partnerNavigationConfig`（未来加功能 = 加菜单 + 加页面） |
+| 导航菜单 | `plus-ui/src-portal/layouts/navigation-config.ts` | `partnerNavigationConfig`（未来加功能 = 加菜单 + 加页面） |
 | 跨平台合作 | — | 合作关联表（学校租户 × 企业租户） |
 
 ### 2.2 核心决策（已确认）
@@ -54,7 +54,7 @@
 3. **专家数据存企业侧**：企业服务台维护，学校端只读、按已引入企业自动加载
    > **ADR-0007 决策 2 措辞澄清（本节为准）**：ADR-0007 原文「学校侧按授权（alliance_resource_grants，146）读取」中，`alliance_resource_grants`（迁移 146 `expert_account_grant` 内建表）实际是**资源编辑授权**（`resource_type: position|scene`，授权企业编辑学校自建资源），并非专家档案读取授权；专家档案的学校侧可见性由「已引入企业 links 关联 + 企业 `enable_public` 开关」双控（见 §5.6 权限与越权校验）。
 4. **账号体系**：注册时创建企业管理员账号（`enterprise_admin`），管理员可在服务台添加成员账号（`enterprise_member`）
-5. **前端形态**：业务门户（Vue，`frontend/portal-vue`）内 `/partner` 路由段，复用现有组件与请求层
+5. **前端形态**：业务门户（Vue，`plus-ui/src-portal`）内 `/partner` 路由段，复用现有组件与请求层
 6. **存量数据**：不迁移，联盟开发数据整体重置
 
 ---
@@ -363,7 +363,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 
 | # | 任务 | 文件/位置 |
 |---|------|----------|
-| F1 | api-client：AuthPlatform 加 `partner`、token key `zhiyu-partner-token`、`isPartnerPath`、`partnerRequest`、401 跳 `/partner/login` | Vue 请求层（`frontend/portal-vue/src/api/`） |
+| F1 | api-client：AuthPlatform 加 `partner`、token key `zhiyu-partner-token`、`isPartnerPath`、`partnerRequest`、401 跳 `/partner/login` | Vue 请求层（`plus-ui/src-portal/api/`） |
 | F2 | 新增 `api/partner.ts`（auth/profile/experts/members/dashboard/schools） | 新文件 |
 | F3 | `api/alliance.ts` 改造：enterpriseApi 改 list/search/link/unlink/update（移除普通 create，保留 register）；expertApi 保留 list/get/create/update/delete + display；新增 mentor-options | 改造 |
 | F4 | `/partner/login`：登录 + 注册双 Tab（参考 portal/login 风格） | Vue 门户 `/partner/login` 页 |
@@ -373,7 +373,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 | F8 | `/partner/experts/*`：列表 + 详情 + 新建/编辑（改造自现有专家页面，含 is_public 开关） | 新页面 |
 | F9 | `/partner/members`：成员账号管理（仅 enterprise_admin）——**未实施**（见 §5.2 备注，当前成员由注册/运营端代管） | 新页面 |
 | F10 | `/partner/schools`：合作学校列表；账号安全（改密码） | 新页面 |
-| F11 | 导航：`partnerNavigationConfig`（复用菜单/权限机制） | `frontend/portal-vue/src/layouts/navigation-config.ts` |
+| F11 | 导航：`partnerNavigationConfig`（复用菜单/权限机制） | `plus-ui/src-portal/layouts/navigation-config.ts` |
 | F12 | 学校侧 enterprises：已引入列表 + "引入企业"搜索 Dialog；保留评级/状态/前台展示管理；移除新建/编辑主体/导入入口 | 改造 |
 | F13 | 学校侧 enterprises/[id]：主体只读 + 管理字段 + 协议/项目/成果 Tab 不变；移除 new/[id]/edit 页 | 改造 |
 | F14 | 学校侧 experts：只读列表（企业筛选）+ 专家详情（共建导师入口已移除，共建人选专家走选择器直接勾选企业账号），移除 new/edit | 改造 |
@@ -386,7 +386,7 @@ TRUNCATE `partner_enterprises`（原 alliance_enterprises）、`alliance_experts
 ## 8. 部署与验证
 
 1. migration 142（配对 `.down.sql`），部署时 `deploy.sh` 执行 `db/migrations` 迁移
-2. 本地门禁：`./mvnw compile -q`；`cd frontend/portal-vue && pnpm build`；`./scripts/spec-check.sh`（见 `AGENTS.md` 4.2）
+2. 本地门禁：`./mvnw compile -q`；`cd plus-ui && pnpm build:portal`；`./scripts/spec-check.sh`（见 `AGENTS.md` 4.2）
 3. 分支隔离：`git worktree add -b feat/partner-平台 ...` → 开发提交 → 推送 → `./deploy.sh --branch <分支>`
 4. 健康检查：`curl -sf http://127.0.0.1/health   # 经生产入口（宿主 nginx→网关→backend）；容器不再发布 8080`；部署通过后自动合并回 master
 

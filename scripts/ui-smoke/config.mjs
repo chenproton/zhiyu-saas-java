@@ -7,7 +7,7 @@ import path from 'path'
 
 export const SCRIPT_DIR = path.dirname(new URL(import.meta.url).pathname)
 export const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..', '..')
-// 单栈（Java+Vue）：路由表从 frontend/portal-vue/src/router/index.ts 提取（见 routes.mjs）
+// 单栈（Java+Vue）：路由表从 plus-ui/src-portal/router/index.ts 提取（见 routes.mjs）
 export const STATE_DIR = '/tmp/zhiyu-ui-smoke'
 export const DEFAULT_REPORT = path.join(STATE_DIR, 'report.json')
 

@@ -12,7 +12,7 @@
 | **新增/变更功能** | [`spec-standards.md`](spec-standards.md)（spec 分级/模板/DoD + 7 节点闭环）→ 对应 [`spec/`](spec/) |
 | **写/改后端代码** | 根 `AGENTS.md` 第二部分（Java 框架契约：controller/service/mapper 分层与复用）+ [`初始化与部署指南.md`](初始化与部署指南.md) |
 | **Java 后端初始化/部署/多租户** | [`初始化与部署指南.md`](初始化与部署指南.md)（Java 框架环境/启动/构建/Docker）+ [`多租户功能扩展规范.md`](多租户功能扩展规范.md)（Java 多租户扩展）+ [`Git Flow 开发协作简易指南.md`](Git Flow 开发协作简易指南.md)（Java 分支/提交/MR） |
-| **写/改前端页面组件** | Vue 门户/管理端（`frontend/portal-vue`、`plus-ui`）：[`spec/vue-business-portal.md`](spec/vue-business-portal.md) + 根 `AGENTS.md` 第二部分（Element Plus / RuoYi 组件体系） |
+| **写/改前端页面组件** | Vue 门户/管理端（`plus-ui`：`src-portal` 门户、`src` 管理端）：[`spec/vue-business-portal.md`](spec/vue-business-portal.md) + 根 `AGENTS.md` 第二部分（Element Plus / RuoYi 组件体系） |
 | **安全非功能（密码/会话/密钥/限流/上传）** | [`security-standards.md`](security-standards.md) |
 | **性能/可观测/国际化/测试** | [`non-functional-standards.md`](non-functional-standards.md) |
 | **跑 / 扩展自动化测试（UI 冒烟 + 单测）** | [`testing-guide.md`](testing-guide.md)（全量页面访问冒烟 + CRUD 巡检 + 后端/前端单测门禁） |

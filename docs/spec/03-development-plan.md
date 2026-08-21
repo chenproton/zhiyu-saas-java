@@ -138,7 +138,7 @@
 | 状态机非法流转 | 数据一致性 | ContentActionStore 统一校验 + 409 冲突语义 |
 | 租户数据越权 | 数据泄露 | 三重校验 + 平台隔离 + 无跨租户特权原则 |
 | 导入大文件超时 | 导入失败 | 10min 长超时 + 预览先行 + 行级错误报告 |
-| 部署编译错误 | 阻塞上线 | deploy.sh 质量门禁（Maven 编译 + portal-vue/plus-ui 构建 + spec-check）前置拦截 |
+| 部署编译错误 | 阻塞上线 | deploy.sh 质量门禁（Maven 编译 + plus-ui（admin+portal）构建 + spec-check）前置拦截 |
 
 ---
 
@@ -154,17 +154,17 @@
 
 ## 5. 部署契约（deploy.sh 行为约定）
 
-> 与实现同源：`deploy.sh` 是**唯一部署入口**（Java + Vue 单栈：Java 后端 + portal-vue/plus-ui 前端 + MySQL 8.0）。建库建表（`db/migrations` 纯 mysql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh。
+> 与实现同源：`deploy.sh` 是**唯一部署入口**（Java + Vue 单栈：Java 后端 + plus-ui（admin+portal）前端 + MySQL 8.0）。建库建表（`db/migrations` 纯 mysql 执行 + 种子数据由 java-backend SeedRunner 初始化）统一只经 deploy.sh。
 
 ### 5.1 执行顺序（顺序即契约）
 
 1. **取部署锁**（`/run/zhiyu-deploy.lock`，flock 不可用即拒绝部署）——先于任何系统级动作（apt / 安装 Node / 装 nginx / 配 docker mirror），避免并发部署互踩
 2. 校验分支 → 在隔离 worktree（`/tmp/zhiyu-build-cache`）上以 `origin/master` 为基座合并目标分支
-3. 增量构建：源码 hash 比对**只构建变更部分**——Java 后端（`.` Maven 构建）+ `frontend/portal-vue` + `plus-ui`；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
+3. 增量构建：源码 hash 比对**只构建变更部分**——Java 后端（`.` Maven 构建）+ `plus-ui`（admin + portal 双构建）；前端构建在 `systemd-run` 单元内执行（`MemoryMax=6G`，`.env` 中 `VITE_*` 经 `--setenv` 显式透传）
 4. **第一段启动**：只起数据层 `mysql` / `redis`
 5. **全库备份**（`/opt/zhiyu-saas/backups`，目录 700 / 文件 600，保留最近 7 份）
 6. **执行迁移**：`db/migrations/*.up.sql` 纯 mysql 执行（`mysql 遇错即停`，遇错立即停止，不叠加半应用 DDL）+ **Java 框架表初始化**（deploy 幂等初始化）
-7. **第二段启动**：再起业务容器 `java-backend` / `nginx` / `kkfileview`（前端 portal-vue/plus-ui 为静态产物，rsync 到 `$DEPLOY_DIR/web/` 由 nginx 容器 bind mount，无独立容器）
+7. **第二段启动**：再起业务容器 `java-backend` / `nginx` / `kkfileview`（前端 plus-ui（admin+portal）为静态产物，rsync 到 `$DEPLOY_DIR/web/` 由 nginx 容器 bind mount，无独立容器）
 8. **健康门禁**：带 healthcheck 的服务必须 `healthy`（`Up (health: starting)` / `Up (unhealthy)` 不算就绪）；网关容器重启后自检两次失败即回滚
 9. **业务冒烟**：`/portal/login` 200、`/health` 200、`/api/v1/auth/captcha` 200（API+Redis）、`/api/v1/settings/theme` 200（API+DB 读）、`/api/v1/tenants` 401（鉴权中间件生效）；任一失败即回滚
 10. 首次建库时补跑**种子数据**（java-backend SeedRunner，失败仅 warn 不回滚）
@@ -201,13 +201,13 @@
 
 ### 5.4 质量门禁
 
-CI（`.github/workflows/ci.yml`）：Java Maven 编译 + portal-vue/plus-ui 构建 + `spec-check.sh` + **shell（`bash -n` 全量 + shellcheck，覆盖 deploy/scripts 全部脚本）**。
+CI（`.github/workflows/ci.yml`）：Java Maven 编译 + plus-ui（admin+portal）构建 + `spec-check.sh` + **shell（`bash -n` 全量 + shellcheck，覆盖 deploy/scripts 全部脚本）**。
 
 **`deploy.sh` 质量门禁默认开启**，`--skip-gates` 仅应急跳过。原因：CI 触发条件是 `push: [master]`，而 deploy.sh 部署成功后直推 master —— 门禁若只靠 CI，等于事后报警，红了也拦不住已写入的 master。
 
 门禁的几条**边界必须知道**（否则会高估覆盖度）：
 1. **`spec-check.sh` 无条件执行**（秒级），纯文档/纯脚本改动同样校验；
-2. **语言级门禁随构建触发**：Java Maven 编译只在 Java 源码指纹变化时跑，portal-vue/plus-ui 构建只在前端指纹变化时跑 —— 无源码变更的部署不会重复跑它们（CI 仍会在 master 上全量跑）；
+2. **语言级门禁随构建触发**：Java Maven 编译只在 Java 源码指纹变化时跑，plus-ui（admin+portal）构建只在前端指纹变化时跑 —— 无源码变更的部署不会重复跑它们（CI 仍会在 master 上全量跑）；
 
 ## 6. 后续迭代建议
 

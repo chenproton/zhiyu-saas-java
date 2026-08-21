@@ -59,7 +59,7 @@ node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --accou
 
 ### 1.4 覆盖范围与安全护栏
 
-**覆盖**：`school/teacher/student` 走 portal 登录（`/portal/login`）；`partner`（企业端）走独立门户（`/partner/login`）。静态路由自动枚举 `frontend/portal-vue/src/router/index.ts` 下全部路由（跳过纯 redirect 项）；动态详情/编辑页从后端 API 拉真实 id 直接访问。无权限页（遮罩/全 401/403）自动记 `skip` 不算错误。
+**覆盖**：`school/teacher/student` 走 portal 登录（`/portal/login`）；`partner`（企业端）走独立门户（`/partner/login`）。静态路由自动枚举 `plus-ui/src-portal/router/index.ts` 下全部路由（跳过纯 redirect 项）；动态详情/编辑页从后端 API 拉真实 id 直接访问。无权限页（遮罩/全 401/403）自动记 `skip` 不算错误。
 
 **安全护栏**（默认开启，保护真实数据）：
 - 只操作 `SMOKE_` 前缀测试数据；`/superadmin` 与角色管理页默认不触发 CRUD；
@@ -86,7 +86,7 @@ node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --accou
 | 依赖 | 说明 |
 |---|---|
 | 后端工具链 | JDK 21 / Maven（`.`，`./mvnw compile -q` 编译门禁） |
-| 前端工具链 | Node 20+ / pnpm，`frontend/portal-vue` 与 `plus-ui` 各自 `pnpm install` + `pnpm build` |
+| 前端工具链 | Node 20+ / pnpm，`plus-ui` 单工程（admin + portal）`pnpm install` + `pnpm build`（或 `build:admin` / `build:portal` 分开跑） |
 | UI 冒烟依赖 | `cd scripts/ui-smoke && npm install` + 系统 Google Chrome |
 | 测试账号 | `school/school123`、`teacher/teacher123`、`student/student123`、`partner(smokepartner/smoke123)` |
 
@@ -103,8 +103,8 @@ node scripts/ui-smoke/ui-smoke.mjs --base-url http://103.236.64.243:2026 --accou
 ### 3.3 前端测试
 
 ```bash
-cd frontend/portal-vue && pnpm build     # 业务门户构建（含 vue-tsc 类型检查）
-cd plus-ui && pnpm build        # 管理端构建
+cd plus-ui && pnpm build:portal    # 业务门户构建（含 vue-tsc 类型检查，产物 dist-portal）
+cd plus-ui && pnpm build:admin     # 管理端构建（产物 dist）
 ```
 
 - 前端门禁以构建 + 类型检查（`vue-tsc`）为主；纯逻辑工具函数可配单测（页面级验证交给 UI 冒烟）。
@@ -145,7 +145,7 @@ cd plus-ui && pnpm build        # 管理端构建
 | `dangerousWords` / `dangerousWordsEn` | 会被跳过的写数据/危险按钮词表（中英） |
 | `cleanupApis` | 巡检后清理 `SMOKE_` 数据的接口映射 |
 
-> 新页面（静态路由）会自动被巡检器枚举（扫描 `frontend/portal-vue/src/router/index.ts`），无需手工登记；带 `[id]` 的动态详情/编辑页需在 `dynamicRoutes` 配置真实 id 来源。
+> 新页面（静态路由）会自动被巡检器枚举（扫描 `plus-ui/src-portal/router/index.ts`），无需手工登记；带 `[id]` 的动态详情/编辑页需在 `dynamicRoutes` 配置真实 id 来源。
 
 ### 4.2 扩展巡检器本身（进阶，可选）
 
@@ -177,4 +177,4 @@ cd plus-ui && pnpm build        # 管理端构建
 - UI 冒烟工具完整用法：`scripts/ui-smoke/README.md`
 - 后端分层红线（测试归属）：根 `AGENTS.md` 第二部分（controller/service/mapper）
 - spec 工作流 / DoD：`docs/spec-standards.md`
-- 前端组件复用：`AGENTS.md` 第二部分 + `frontend/portal-vue`/`plus-ui` 源码
+- 前端组件复用：`AGENTS.md` 第二部分 + `plus-ui` 源码（`src-portal` 门户 / `src` 管理端）

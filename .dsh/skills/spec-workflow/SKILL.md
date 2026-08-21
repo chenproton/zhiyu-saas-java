@@ -38,8 +38,8 @@ whenToUse: 接到「新增功能 / 修复 bug / 重构 / 变更行为」任务�
 
 ```bash
 ./mvnw compile -q            # Java 后端编译（JDK 21）
-cd frontend/portal-vue && pnpm build             # 业务门户（含 vue-tsc 类型检查）
-cd plus-ui && pnpm build                # 管理端
+cd plus-ui && pnpm build:portal          # 业务门户（含 vue-tsc 类型检查）
+cd plus-ui && pnpm build:admin           # 管理端
 ./scripts/spec-check.sh                          # spec 硬约束（必须通过）
 ```
 
@@ -73,7 +73,7 @@ git add -A && git commit -m "feat: 任务描述" && git push -u origin <分支>
 cd / && git worktree remove /tmp/<agent>
 ```
 
-deploy.sh 自动做：源码 hash 增量构建（Java Maven + portal-vue/plus-ui）、**质量门禁默认开启**（spec-check 无条件跑；Maven 编译与前端构建随各自源码指纹触发，`--skip-gates` 应急跳过）、分两段启动（数据层→备份→迁移→框架表初始化→业务容器）、健康门禁 + 业务冒烟（失败回滚且不合并 master）、部署锁串行。代码修改后必须 deploy 验证；纯文档改动直接 commit。完整契约见 `docs/spec/03-development-plan.md` §5。
+deploy.sh 自动做：源码 hash 增量构建（Java Maven + plus-ui（admin+portal 双构建））、**质量门禁默认开启**（spec-check 无条件跑；Maven 编译与前端构建随各自源码指纹触发，`--skip-gates` 应急跳过）、分两段启动（数据层→备份→迁移→框架表初始化→业务容器）、健康门禁 + 业务冒烟（失败回滚且不合并 master）、部署锁串行。代码修改后必须 deploy 验证；纯文档改动直接 commit。完整契约见 `docs/spec/03-development-plan.md` §5。
 
 ## 7. 与 Harness 工具的配合
 

@@ -11,41 +11,34 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend (portal-vue / plus-ui build)
+    name: Frontend (plus-ui: admin + portal build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # portal-vue packageManager pnpm@9.15.9（与 deploy.sh PNPM_VERSION 对齐）；plus-ui 用 pnpm 10（见下）
+      # plus-ui 单工程双构建：packageManager pnpm@10.34.5 且 engines.pnpm >=10
+      # （与 deploy.sh 的 PLUS_PNPM 逻辑保持一致）
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.15.9
+          version: 10.34.5
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: |
-            frontend/portal-vue/pnpm-lock.yaml
-            plus-ui/pnpm-lock.yaml
+          cache-dependency-path: plus-ui/pnpm-lock.yaml
 
-      - name: Install portal-vue deps
-        working-directory: frontend/portal-vue
+      - name: Install plus-ui deps
+        working-directory: plus-ui
         run: pnpm install --frozen-lockfile
 
-      - name: Build portal-vue (含 vue-tsc 类型检查)
-        working-directory: frontend/portal-vue
-        run: pnpm build
-
-      # plus-ui 声明 packageManager pnpm@10.34.5 且 engines.pnpm >=10，全局 pnpm 9 不兼容
-      # （ERR_PNPM_UNSUPPORTED_ENGINE），与 deploy.sh 的 PLUS_PNPM 逻辑保持一致
-      - name: Install plus-ui deps (pnpm 10)
+      - name: Build plus-ui admin
         working-directory: plus-ui
-        run: npx --yes pnpm@10.34.5 install --frozen-lockfile
+        run: pnpm build:admin
 
-      - name: Build plus-ui (pnpm 10)
+      - name: Build portal (含 vue-tsc 类型检查)
         working-directory: plus-ui
-        run: npx --yes pnpm@10.34.5 build
+        run: pnpm build:portal
 
   backend:
     name: Backend (Maven compile / test / spec-check)
