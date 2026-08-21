@@ -3999,7 +3999,11 @@ public class ImportExportServiceImpl implements IImportExportService {
             DateTimeFormatter.ISO_LOCAL_DATE,
             DateTimeFormatter.ofPattern("yyyy/M/d"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd"),
-            DateTimeFormatter.ofPattern("yyyy年M月d日")
+            DateTimeFormatter.ofPattern("yyyy年M月d日"),
+            // POI DataFormatter 对日期数字单元格默认输出短格式 M/d/yy（如 9/1/25），
+            // 缺失时学期等日期列全部解析失败被跳过（教务配置导入实测）
+            DateTimeFormatter.ofPattern("M/d/yy"),
+            DateTimeFormatter.ofPattern("M/d/yyyy")
         }) {
             try {
                 return LocalDate.parse(t, f);
