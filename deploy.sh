@@ -282,6 +282,9 @@ normalize_migration_versions() {
 # 执行数据库迁移：纯 mysql 逐个执行未应用迁移（schema_migrations 记录版本，幂等）
 run_migrations() {
   local mig_dir="$1"
+  # 无条件确保版本表存在（幂等）：即使 .migration-done 已存在（旧部署标记）也不能跳过，
+  # 否则 schema_migrations 缺失时所有迁移被重复执行、版本记录失败。
+  mysql_db -e "CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);" 2>/dev/null || true
   normalize_migration_versions "$mig_dir"
   local applied_versions
   applied_versions=$(mysql_db -N -e "SELECT version FROM schema_migrations;" 2>/dev/null || true)
