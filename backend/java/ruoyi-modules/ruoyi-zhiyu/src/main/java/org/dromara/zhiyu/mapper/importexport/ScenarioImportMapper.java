@@ -102,9 +102,8 @@ public interface ScenarioImportMapper {
                              @Param("taskId") String taskId, @Param("methodKey") String methodKey,
                              @Param("weight") BigDecimal weight);
 
-    /** 按租户+名称查找专业 ID（NFKC 归一化，对齐 Go LookupProfessionIDsByNames）。 */
-    @Select("SELECT id FROM majors WHERE tenant_id = #{tenantId}"
-        + " AND normalize(name, NFKC) = normalize(#{name}, NFKC) LIMIT 1")
+    /** 按租户+名称查找专业 ID（对齐 Go LookupProfessionIDsByNames；MySQL 无 normalize 函数，直接按名称匹配）。 */
+    @Select("SELECT id FROM majors WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectMajorIdByNameNfkc(@Param("tenantId") String tenantId, @Param("name") String name);
 
     /** 按租户+名称查找场景批次 ID（对齐 Go LookupBatchID(scene_batches)）。 */

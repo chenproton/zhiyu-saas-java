@@ -67,8 +67,8 @@ public interface LessonGranularCourseImportMapper {
     int insertCourseResourceBinding(@Param("id") String id, @Param("tenantId") String tenantId,
                                     @Param("courseId") String courseId, @Param("resourceId") String resourceId);
 
-    @Select("SELECT COALESCE(MAX(substring(code from '^GRA-[0-9]{4}-([0-9]+)')), 0)"
-        + " FROM courses WHERE tenant_id = #{tenantId} AND code LIKE 'GRA-' || #{year} || '-%'")
+    @Select("SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(code, '-', -1) AS UNSIGNED)), 0)"
+        + " FROM courses WHERE tenant_id = #{tenantId} AND code LIKE CONCAT('GRA-', #{year}, '-%')")
     int selectMaxGranularCourseCodeNum(@Param("tenantId") String tenantId, @Param("year") String year);
 
     @Select("SELECT id FROM knowledge_points WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")

@@ -2832,6 +2832,10 @@ public class ImportExportServiceImpl implements IImportExportService {
         List<ImportPreviewItem> duplicateItems = new ArrayList<>();
         int created = 0, failed = 0, skipped = 0, duplicates = 0;
         List<List<String>> rows = readRows(wb, "课程基本信息");
+        // 编码序列在循环外取一次最大值、循环内自增：MySQL REPEATABLE READ 下快照读看不到本事务未提交插入，
+        // 逐行查询会重复生成 GRA-2026-0001 触发 uq_courses_tenant_code 冲突（导入实测）
+        String codeYear = String.valueOf(java.time.Year.now().getValue());
+        int codeSeq = granularImportMapper.selectMaxGranularCourseCodeNum(tenantId, codeYear);
         for (int i = 2; i < rows.size(); i++) {
             List<String> row = rows.get(i);
             String name = cell(row, 0).trim();
@@ -2913,7 +2917,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 continue;
             }
             String courseId = UUID.randomUUID().toString();
-            String code = generateGranularCourseCode(tenantId);
+            String code = String.format("GRA-%s-%04d", codeYear, ++codeSeq);
             try {
                 granularImportMapper.insertGranularCourse(courseId, tenantId, code, name, majorId, durationPtr,
                     difficultyPtr, description, userId, batchId, toPgArray(knowledgePointIds), toPgArray(resourceIds));
@@ -2956,11 +2960,7 @@ public class ImportExportServiceImpl implements IImportExportService {
         return existing != null && !existing.isEmpty() ? existing : id;
     }
 
-    private String generateGranularCourseCode(String tenantId) {
-        String year = String.valueOf(java.time.Year.now().getValue());
-        int maxNum = granularImportMapper.selectMaxGranularCourseCodeNum(tenantId, year);
-        return String.format("GRA-%s-%04d", year, maxNum + 1);
-    }
+    // 颗粒课编码：改由 importGranularCourses 循环内自增（codeSeq）生成，避免 MySQL 快照读重复；原 generateGranularCourseCode 已移除
 
     /** 资源按名称 find-or-create（按后缀推断类型，默认 other），对齐 Go FindOrCreateResources。 */
     private String findOrCreateResource(String tenantId, String name, String userId) {
