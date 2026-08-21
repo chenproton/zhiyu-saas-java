@@ -18,7 +18,7 @@ import java.util.List;
 public interface AffairsScheduleMapper extends BaseMapperPlus<ScheduleEntry, ScheduleEntry> {
 
     /** 以租户+学期粒度的 advisory 事务锁串行化排课变更（随事务释放）。 */
-    @Select("SELECT pg_advisory_xact_lock(hashtextextended(#{key}, 0))")
+    @Select("SELECT GET_LOCK(CONCAT('zhiyu:schedule:', #{key}), 5)")
     Long advisoryLock(@Param("key") String key);
 
     /** 查询已发布区当前最大版本。 */

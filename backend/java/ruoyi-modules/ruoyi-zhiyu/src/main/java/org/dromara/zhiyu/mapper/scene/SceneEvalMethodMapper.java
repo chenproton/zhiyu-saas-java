@@ -25,7 +25,7 @@ public interface SceneEvalMethodMapper extends BaseMapperPlus<SceneEvalMethod, S
     /**
      * 任务级 advisory 锁（须在事务内调用，串行化并发保存；对齐 Go LockByKey）。
      */
-    @Select("SELECT pg_advisory_xact_lock(hashtext(#{key}))")
+    @Select("SELECT GET_LOCK(CONCAT('zhiyu:scene:', #{key}), 5)")
     void lockTaskEval(@Param("key") String key);
 
     /**

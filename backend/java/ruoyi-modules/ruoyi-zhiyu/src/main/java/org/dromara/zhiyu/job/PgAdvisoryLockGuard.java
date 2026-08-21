@@ -11,14 +11,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * PostgreSQL 会话级 advisory 锁（专用连接持有，对齐 Go scheduler.aggregateAll）。
+ * MySQL 会话级用户锁（GET_LOCK/RELEASE_LOCK，专用连接持有，对齐 Go scheduler.aggregateAll；
+ * 原 PG advisory 锁已切换，类名保留）。
  *
- * <p>锁由一条从连接池取出的专用 {@link Connection} 持有（会话级，与具体执行汇聚的
+ * <p>锁由一条从连接池取出的专用 {@link Connection} 持有（连接级，与具体执行汇聚的
  * MyBatis 连接无关），{@link LockHandle#close()} 显式 unlock 并归还连接；
- * 连接意外中断时 PG 也会自动释放会话锁。与 Go 的差异：Go 在同一连接上
- * {@code SET statement_timeout = 0} 并直接执行汇聚；Java 侧汇聚走 MyBatis 连接，
- * 语句超时在各岗位事务内以 {@code SET LOCAL} 解除（见
- * {@code EvaluationJobAbilityServiceImpl.aggregateAllPublished}），故本连接无需 SET/RESET。</p>
+ * 连接意外中断时 MySQL 也会自动释放连接级锁。</p>
  *
  * @author zhiyu
  */
@@ -33,7 +31,7 @@ public class PgAdvisoryLockGuard {
     }
 
     /**
-     * 尝试取锁（pg_try_advisory_lock）。
+     * 尝试取锁（MySQL GET_LOCK，超时 0 不等待）。
      *
      * @return 取到锁返回句柄；已被其他实例持有返回 {@code null}（调用方应跳过本次执行）
      */
@@ -41,8 +39,8 @@ public class PgAdvisoryLockGuard {
         Connection conn = dataSource.getConnection();
         try {
             boolean locked;
-            try (PreparedStatement ps = conn.prepareStatement("SELECT pg_try_advisory_lock(?)")) {
-                ps.setLong(1, key);
+            try (PreparedStatement ps = conn.prepareStatement("SELECT GET_LOCK(?, 0)")) {
+                ps.setString(1, String.valueOf(key));
                 try (ResultSet rs = ps.executeQuery()) {
                     rs.next();
                     locked = rs.getBoolean(1);
@@ -63,7 +61,7 @@ public class PgAdvisoryLockGuard {
         }
     }
 
-    /** 会话锁句柄：close 时先 pg_advisory_unlock（尽力而为）再归还连接。 */
+    /** 会话锁句柄：close 时先 RELEASE_LOCK（尽力而为）再归还连接。 */
     public static class LockHandle implements AutoCloseable {
 
         private final Connection conn;
@@ -77,9 +75,9 @@ public class PgAdvisoryLockGuard {
         @Override
         public void close() {
             try (Statement st = conn.createStatement()) {
-                st.execute("SELECT pg_advisory_unlock(" + key + ")");
+                st.execute("SELECT RELEASE_LOCK('" + key + "')");
             } catch (SQLException e) {
-                log.warn("advisory lock 释放失败（连接关闭后 PG 会自动释放）key={}", key, e);
+                log.warn("advisory lock 释放失败（连接关闭后 MySQL 会自动释放）key={}", key, e);
             }
             try {
                 conn.close();

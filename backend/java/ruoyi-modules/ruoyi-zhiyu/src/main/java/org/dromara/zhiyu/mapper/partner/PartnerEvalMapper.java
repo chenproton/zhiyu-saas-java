@@ -17,7 +17,7 @@ import java.util.List;
  */
 public interface PartnerEvalMapper extends BaseMapperPlus<SceneEvalMethod, SceneEvalMethod> {
 
-    @Select("SELECT pg_advisory_xact_lock(hashtext(#{key}))")
+    @Select("SELECT GET_LOCK(CONCAT('zhiyu:partner:', #{key}), 5)")
     void lockTaskEval(@Param("key") String key);
 
     @Select("SELECT COALESCE(MAX(version), 0) FROM task_evaluation_methods WHERE task_id = #{taskId} AND tenant_id = #{tenantId}")
