@@ -97,7 +97,7 @@ public interface AffairsScheduleMapper extends BaseMapperPlus<ScheduleEntry, Sch
         """)
     List<PlanEntryBrief> selectPlanEntryBriefs(@Param("tenantId") String tenantId, @Param("termId") String termId);
 
-    /** 已排课导出映射（主表回填；periods 取 jsonb 文本、班级名取已逗号拼接文本）。 */
+    /** 已排课导出映射（主表回填；periods 取 JSON 文本、班级名取已逗号拼接文本）。 */
     @Select("""
         SELECT se.plan_entry_id AS planEntryId, se.day_of_week AS day, se.periods AS periodsJson,
             COALESCE(u.name, '') AS teacherName, COALESCE(v.name, '') AS venueName,

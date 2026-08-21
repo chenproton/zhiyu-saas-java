@@ -74,7 +74,7 @@ public class ZhiyuUser extends BaseZhiyuEntity {
     /** 身份证号 */
     private String idCard;
 
-    /** 职称 ID 数组（uuid[]） */
+    /** 职称 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> titleIds;
 

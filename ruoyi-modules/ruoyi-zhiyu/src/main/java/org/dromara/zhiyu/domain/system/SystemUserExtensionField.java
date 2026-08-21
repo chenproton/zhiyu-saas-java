@@ -43,7 +43,7 @@ public class SystemUserExtensionField {
     /** 是否必填 */
     private Boolean isRequired;
 
-    /** 适用角色码（text[]） */
+    /** 适用角色码（JSON 数组列，原 PG text[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> applicableRoleCodes;
 

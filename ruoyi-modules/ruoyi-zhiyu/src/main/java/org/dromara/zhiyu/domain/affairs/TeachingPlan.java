@@ -53,7 +53,7 @@ public class TeachingPlan {
     /** 批次 ID */
     private String batchId;
 
-    /** 协作者 ID 数组（uuid[]） */
+    /** 协作者 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> collaborators;
 

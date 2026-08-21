@@ -90,7 +90,7 @@ public class ZhiyuTenant extends BaseZhiyuEntity {
     /** 办学性质 */
     private String educationNature;
 
-    /** 管理员用户 ID 数组（uuid[]） */
+    /** 管理员用户 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> adminIds;
 

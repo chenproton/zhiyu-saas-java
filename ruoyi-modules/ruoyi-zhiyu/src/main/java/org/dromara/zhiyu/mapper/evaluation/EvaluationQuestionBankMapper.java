@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * 题库 Mapper（question_banks 表）。
  *
- * <p>uuid[] 数组列写入需显式 CAST，故创建/更新走自定义 SQL；读取走内置方法。</p>
+ * <p>数组列（MySQL JSON，原 PG uuid[]）经 JsonStringArrayTypeHandler 绑定，创建/更新走自定义 SQL；读取走内置方法。</p>
  *
  * @author zhiyu
  */

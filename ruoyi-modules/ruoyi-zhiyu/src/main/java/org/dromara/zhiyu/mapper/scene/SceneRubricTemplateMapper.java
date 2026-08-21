@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * 评分模板 Mapper（rubric_templates 表，Go→Java 迁移）。
  *
- * <p>data 为 jsonb 列，写入需显式 CAST；types 为 varchar[] 数组列。</p>
+ * <p>data 为 MySQL JSON 列，写入需显式 CAST；types 为 JSON 数组列（原 PG varchar[]）。</p>
  *
  * @author zhiyu
  */

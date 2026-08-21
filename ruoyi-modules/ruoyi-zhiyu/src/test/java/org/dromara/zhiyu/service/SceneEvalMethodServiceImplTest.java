@@ -17,7 +17,9 @@ import org.dromara.zhiyu.mapper.scene.SceneReviewStepMapper;
 import org.dromara.zhiyu.mapper.scene.SceneRubricTemplateMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScenarioTaskMapper;
 import org.dromara.zhiyu.mapper.scene.SceneScoreRuleMapper;
+import org.dromara.zhiyu.mapper.system.SystemRoleMapper;
 import org.dromara.zhiyu.service.impl.scene.SceneEvalMethodServiceImpl;
+import org.dromara.zhiyu.service.system.SystemGuard;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -77,8 +79,9 @@ class SceneEvalMethodServiceImplTest {
         examQuestionMapper = mock(EvaluationExamQuestionMapper.class);
         questionMapper = mock(EvaluationQuestionMapper.class);
         snapshotMapper = mock(PortalResourceSnapshotMapper.class);
+        // SystemGuard 直读 TenantContext（requireTenant/requireUser 不触库），注入 mock roleMapper 即可
         service = new SceneEvalMethodServiceImpl(
-            evalMethodMapper, mock(SceneEvalPointMapper.class), mock(SceneScoreRuleMapper.class),
+            new SystemGuard(mock(SystemRoleMapper.class)), evalMethodMapper, mock(SceneEvalPointMapper.class), mock(SceneScoreRuleMapper.class),
             mock(SceneReviewStepMapper.class), mock(SceneRubricTemplateMapper.class), taskMapper,
             examMapper, examUsageMapper, examQuestionMapper, questionMapper, snapshotMapper);
 
@@ -87,8 +90,8 @@ class SceneEvalMethodServiceImplTest {
         when(taskMapper.selectName(TASK_ID)).thenReturn("任务 1");
         when(taskMapper.selectScenarioName(TASK_ID)).thenReturn("软件项目经理场景2");
         when(evalMethodMapper.selectMaxVersion(TASK_ID, TENANT)).thenReturn(0);
-        when(evalMethodMapper.upsertMethodReturnId(anyString(), anyString(), anyString(), any(),
-            any(), any(), anyString(), any(), any(), anyString(), anyInt(), any())).thenReturn("cfg-1");
+        // MySQL 版：upsertMethod（ON DUPLICATE KEY UPDATE）+ selectMethodId 回读行 id
+        when(evalMethodMapper.selectMethodId(anyString(), anyString(), anyString())).thenReturn("cfg-1");
         when(evalMethodMapper.selectList(org.mockito.ArgumentMatchers.<Wrapper<SceneEvalMethod>>any()))
             .thenReturn(List.of());
         when(examUsageMapper.currentDateYmd()).thenReturn(DATE);
@@ -134,7 +137,7 @@ class SceneEvalMethodServiceImplTest {
             eq("draft"), eq("manual"), eq(CREATOR), eq("V1.0"));
         // usageId 写回 resourceConfig 并随方法行落库
         ArgumentCaptor<String> rcCaptor = ArgumentCaptor.forClass(String.class);
-        verify(evalMethodMapper).upsertMethodReturnId(eq(TENANT), eq(TASK_ID), eq("paper"), any(),
+        verify(evalMethodMapper).upsertMethod(eq(TENANT), eq(TASK_ID), eq("paper"), any(),
             any(), any(), anyString(), any(), any(), rcCaptor.capture(), eq(1), eq(true));
         assertTrue(rcCaptor.getValue().contains("\"usageId\""));
         // paper 不创建临时卷、不同步题目
@@ -210,7 +213,7 @@ class SceneEvalMethodServiceImplTest {
             eq("published"), eq("always"), eq(CREATOR), eq("V1.0"));
         // examId/usageId 写回配置并落库
         ArgumentCaptor<String> rcCaptor = ArgumentCaptor.forClass(String.class);
-        verify(evalMethodMapper).upsertMethodReturnId(eq(TENANT), eq(TASK_ID), eq("quiz"), any(),
+        verify(evalMethodMapper).upsertMethod(eq(TENANT), eq(TASK_ID), eq("quiz"), any(),
             any(), any(), anyString(), any(), any(), rcCaptor.capture(), eq(1), eq(true));
         assertTrue(rcCaptor.getValue().contains("\"examId\""));
         assertTrue(rcCaptor.getValue().contains("\"usageId\""));
@@ -237,7 +240,7 @@ class SceneEvalMethodServiceImplTest {
             eq("published"), eq("always"), eq(CREATOR), eq("V1.0"));
         // examId 写回配置并随方法行落库
         ArgumentCaptor<String> rcCaptor = ArgumentCaptor.forClass(String.class);
-        verify(evalMethodMapper).upsertMethodReturnId(eq(TENANT), eq(TASK_ID), eq("quiz"), any(),
+        verify(evalMethodMapper).upsertMethod(eq(TENANT), eq(TASK_ID), eq("quiz"), any(),
             any(), any(), anyString(), any(), any(), rcCaptor.capture(), eq(1), eq(true));
         assertTrue(rcCaptor.getValue().contains("exam-existing"));
     }

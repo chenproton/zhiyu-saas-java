@@ -62,7 +62,7 @@ public class SceneScenarioTask {
     /** 任务背景 */
     private String background;
 
-    /** 依赖任务 ID 数组（uuid[]） */
+    /** 依赖任务 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> dependencyIds;
 
@@ -72,15 +72,15 @@ public class SceneScenarioTask {
     /** 来源场景 ID（克隆时记录） */
     private String sourceScenarioId;
 
-    /** 知识点 ID 数组（uuid[]） */
+    /** 知识点 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> knowledgePointIds;
 
-    /** 能力点 ID 数组（uuid[]） */
+    /** 能力点 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> abilityPointIds;
 
-    /** 资源 ID 数组（uuid[]） */
+    /** 资源 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> resourceIds;
 

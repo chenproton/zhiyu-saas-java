@@ -11,15 +11,15 @@ import java.util.List;
 /**
  * 企业主体 Mapper（partner_enterprises 表，Go→Java 迁移）。
  *
- * <p>读取走 MyBatis-Plus 内置 selectById/selectList（jsonb 列经
- * JsonStringListTypeHandler 映射）；写入走自定义 SQL（jsonb 需显式 CAST）。</p>
+ * <p>读取走 MyBatis-Plus 内置 selectById/selectList（JSON 数组列经
+ * JsonStringListTypeHandler 映射）；写入走自定义 SQL（JSON 列需显式 CAST）。</p>
  *
  * @author zhiyu
  */
 public interface PartnerEnterpriseMapper extends BaseMapperPlus<PartnerEnterprise, PartnerEnterprise> {
 
     /**
-     * 新建企业主体（企业自助注册用；jsonb 数组列显式 CAST，对齐 Go CreateEnterprise）。
+     * 新建企业主体（企业自助注册用；JSON 数组列显式 CAST，对齐 Go CreateEnterprise）。
      */
     @Insert("INSERT INTO partner_enterprises (id, tenant_id, name, cooperation_types, contact_person, contact_phone,"
         + " contact_email, unified_social_credit_code, business_license_photos, qualification_photos,"

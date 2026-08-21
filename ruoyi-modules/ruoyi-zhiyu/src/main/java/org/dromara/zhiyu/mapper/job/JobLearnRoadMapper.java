@@ -12,14 +12,14 @@ import java.util.List;
 /**
  * 学习路径 Mapper（learn_roads 表，Go→Java 迁移）。
  *
- * <p>steps 为 jsonb 列，写入需显式 CAST 为 jsonb；position_ids 为 uuid[] 数组列。</p>
+ * <p>steps 为 MySQL JSON 列，写入需显式 CAST 为 JSON；position_ids 为 JSON 数组列（原 PG uuid[]）。</p>
  *
  * @author zhiyu
  */
 public interface JobLearnRoadMapper extends BaseMapperPlus<JobLearnRoad, JobLearnRoad> {
 
     /**
-     * 更新学习路径（限定租户；position_ids 数组列显式 CAST）。
+     * 更新学习路径（限定租户；steps 显式 CAST 为 JSON，position_ids 经 JsonStringArrayTypeHandler 绑定）。
      */
     @Update("UPDATE learn_roads SET name = #{name}, description = #{description},"
         + " position_ids = #{positionIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"

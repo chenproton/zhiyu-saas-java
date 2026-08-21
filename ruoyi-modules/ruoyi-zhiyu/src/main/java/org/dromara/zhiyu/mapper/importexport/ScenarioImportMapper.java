@@ -15,8 +15,8 @@ import java.util.Map;
  * 场景 Excel 导入 SQL（对齐 Go store/scenario_import_export.go）。
  *
  * <p>仅承载导入用 SQL；业务编排在 ImportExportServiceImpl.importScenarios。
- * 全部 SQL 显式携带 {@code tenant_id} 过滤（租户安全红线）。uuid[]/varchar[] 数组列
- * 经 {@link JsonStringArrayTypeHandler} 映射并显式 CAST。</p>
+ * 全部 SQL 显式携带 {@code tenant_id} 过滤（租户安全红线）。数组列（MySQL JSON，原 PG uuid[]/varchar[]）
+ * 经 {@link JsonStringArrayTypeHandler} 映射写入。</p>
  *
  * @author zhiyu
  */

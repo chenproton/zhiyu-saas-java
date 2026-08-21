@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * 场景克隆 Mapper（Go→Java 迁移，对齐 store/scenario_clone.go）。
  *
- * <p>克隆 = 事务内多表复制：读取源行（jsonb/数组列以 JSON 文本返回，Service 解析），
+ * <p>克隆 = 事务内多表复制：读取源行（JSON/数组列以 JSON 文本返回，Service 解析），
  * 再以新 UUID 插入目标行。UUID 全部由 Service 用 UUID.randomUUID() 生成。</p>
  *
  * @author zhiyu
@@ -32,7 +32,7 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
         + " FROM scenarios WHERE id = #{id}")
     SourceScenarioRow fetchSource(@Param("id") String id);
 
-    /** 源场景任务（含 jsonb/数组列 JSON 文本）。 */
+    /** 源场景任务（含 JSON/数组列 JSON 文本）。 */
     @Select("SELECT id, name, code, sort_order, description, detailed_description, description_pdf,"
         + " estimated_hours, task_type, difficulty, background,"
         + " COALESCE(dependency_ids, JSON_ARRAY()) AS dependency_ids,"
@@ -48,14 +48,14 @@ public interface SceneCloneMapper extends BaseMapperPlus<SceneWeightConfig, Scen
         + " FROM task_deliverables WHERE task_id = #{taskId} ORDER BY sort_order")
     List<DeliverableRow> fetchDeliverables(@Param("taskId") String taskId);
 
-    /** 源测评方法（含 jsonb 列文本；扫描失败按 Go 语义整体失败）。 */
+    /** 源测评方法（含 JSON 列文本；扫描失败按 Go 语义整体失败）。 */
     @Select("SELECT id, method_key, weight, eval_object, score_type,"
         + " COALESCE(eval_subjects, '[]') AS eval_subjects, standard_name, standard_mode,"
         + " COALESCE(resource_config, JSON_ARRAY()) AS resource_config, version, is_enabled"
         + " FROM task_evaluation_methods WHERE task_id = #{taskId} AND tenant_id = #{tenantId}")
     List<MethodSourceRow> fetchMethods(@Param("taskId") String taskId, @Param("tenantId") String tenantId);
 
-    /** 源评估点（数组/jsonb 列 JSON 文本）。 */
+    /** 源评估点（数组/JSON 列 JSON 文本）。 */
     @Select("SELECT name, description, sub_type, COALESCE(types, JSON_ARRAY()) AS types,"
         + " weight, scoring_method, COALESCE(grade_mapping, '[]') AS grade_mapping,"
         + " COALESCE(knowledge_point_ids, JSON_ARRAY()) AS knowledge_point_ids,"

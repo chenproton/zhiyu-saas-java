@@ -24,7 +24,7 @@ public interface KnowledgePointMapper extends BaseMapperPlus<KnowledgePoint, Kno
     @Select("SELECT tenant_id FROM knowledge_points WHERE id = #{id}")
     String selectTenantId(@Param("id") String id);
 
-    /** 创建知识点（granular_lesson_ids 为 uuid[]）。 */
+    /** 创建知识点（granular_lesson_ids 为 MySQL JSON 数组列，原 PG uuid[]，经 JsonStringArrayTypeHandler 写入）。 */
     @Insert("INSERT INTO knowledge_points (id, tenant_id, name, code, description, linked, granular_lesson_ids, creator_id, source_type, source_id)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{code}, #{description}, #{linked},"
         + " #{granularLessonIds, typeHandler=org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler},"

@@ -17,7 +17,7 @@ import java.util.List;
  * 现场题库 Mapper（on_site_question_library 表）。
  *
  * <p>列表走自定义 SQL（tenant 过滤 + question_text/answer LIKE 搜索 + 分页），
- * 数组列经 {@link JsonStringArrayTypeHandler} 读写；插入/更新显式 cast uuid[]/text[]，
+ * 数组列（MySQL JSON，原 PG uuid[]/text[]）经 {@link JsonStringArrayTypeHandler} 读写，
  * 对齐 Go store/on_site_question_library.go 语义。</p>
  *
  * @author zhiyu

@@ -47,7 +47,7 @@ public class SceneReviewStep extends BaseZhiyuEntity {
     /** 排序序号 */
     private Integer sortOrder;
 
-    /** 指定评分人 ID 数组（uuid[]，仅 enterprise_mentor 持久化） */
+    /** 指定评分人 ID 数组（JSON 数组列，原 PG uuid[]；仅 enterprise_mentor 持久化） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> assignedUserIds;
 }

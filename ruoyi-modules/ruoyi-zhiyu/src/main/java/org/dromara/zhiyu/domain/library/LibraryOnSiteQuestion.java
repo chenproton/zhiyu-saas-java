@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * 现场题库题目（on_site_question_library 表）。
  *
- * <p>knowledge_point_ids 为 uuid[]、tags 为 text[]，均经 {@link JsonStringArrayTypeHandler}
+ * <p>knowledge_point_ids/tags 为 MySQL JSON 数组列（原 PG uuid[]/text[]），均经 {@link JsonStringArrayTypeHandler}
  * 与 List&lt;String&gt; 互转（读写一致，对齐 Go 版 JSONSliceToStrings 语义）。</p>
  *
  * @author zhiyu
@@ -43,11 +43,11 @@ public class LibraryOnSiteQuestion extends BaseZhiyuEntity {
     /** 难度 */
     private String difficulty;
 
-    /** 关联知识点 ID（uuid[]） */
+    /** 关联知识点 ID（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> knowledgePointIds;
 
-    /** 标签（text[]） */
+    /** 标签（JSON 数组列，原 PG text[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> tags;
 

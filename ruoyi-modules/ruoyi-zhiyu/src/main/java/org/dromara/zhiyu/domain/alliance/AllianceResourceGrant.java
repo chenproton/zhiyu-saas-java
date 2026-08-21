@@ -11,7 +11,7 @@ import org.dromara.zhiyu.core.mybatis.JsonStringArrayTypeHandler;
 import java.util.List;
 
 /**
- * 学校-企业资源授权（alliance_resource_grants 表；resource_ids 为 uuid[]）。
+ * 学校-企业资源授权（alliance_resource_grants 表；resource_ids 为 MySQL JSON 数组列，原 PG uuid[]）。
  *
  * @author zhiyu
  */
@@ -24,7 +24,7 @@ public class AllianceResourceGrant extends BaseZhiyuEntity {
     private String tenantId;
     private String enterpriseId;
     private String resourceType;
-    /** uuid[] 授权资源集合 */
+    /** 授权资源集合（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> resourceIds;
     private String createdBy;

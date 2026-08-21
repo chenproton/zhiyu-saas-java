@@ -15,7 +15,7 @@ import java.util.List;
  * 岗位 Mapper（career_positions 表，Go→Java 迁移）。
  *
  * <p>读取走 MyBatis-Plus 内置方法（数组列经 {@link JsonStringArrayTypeHandler} 映射）；
- * 写入走自定义 SQL——uuid[]/text[] 数组列需显式 CAST 才能写入 PG 数组列。</p>
+ * 写入走自定义 SQL——数组列（MySQL JSON，原 PG uuid[]/text[]）经 JsonStringArrayTypeHandler 绑定写入。</p>
  *
  * @author zhiyu
  */

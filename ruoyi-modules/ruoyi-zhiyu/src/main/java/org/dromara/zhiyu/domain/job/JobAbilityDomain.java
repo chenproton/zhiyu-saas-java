@@ -39,7 +39,7 @@ public class JobAbilityDomain {
     /** 能力域描述 */
     private String description;
 
-    /** 包含的能力绑定 ID 数组（uuid[]） */
+    /** 包含的能力绑定 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> bindingIds;
 

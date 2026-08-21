@@ -58,7 +58,7 @@ public class JobCareerPosition extends BaseZhiyuEntity {
     /** 岗位描述 */
     private String description;
 
-    /** 任职要求（text[]） */
+    /** 任职要求（JSON 数组列，原 PG text[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> requirements;
 
@@ -74,7 +74,7 @@ public class JobCareerPosition extends BaseZhiyuEntity {
     /** 创建人 ID */
     private String createdBy;
 
-    /** 协作者 ID 数组（uuid[]） */
+    /** 协作者 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> collaborators;
 

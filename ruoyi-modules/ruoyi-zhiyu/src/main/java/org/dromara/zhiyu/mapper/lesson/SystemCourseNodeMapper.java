@@ -36,7 +36,7 @@ public interface SystemCourseNodeMapper extends BaseMapperPlus<SystemCourseNode,
         + " WHERE eu.target_type = 'node' AND JSON_CONTAINS(eu.target_ids, JSON_QUOTE(#{id}), '$'))")
     boolean existsEvaluationResults(@Param("id") String id);
 
-    /** 创建节点（事务内，含数组/jsonb 列）。 */
+    /** 创建节点（事务内，含数组/JSON 列）。 */
     @Insert("INSERT INTO system_course_nodes (id, tenant_id, course_id, parent_id, name, code, sort_order, ref_type,"
         + " source_id, source_name, teaching_goals, detailed_description, description_pdf, background, estimated_hours,"
         + " duration, difficulty, knowledge_point_ids, resource_ids, eval_data, status)"

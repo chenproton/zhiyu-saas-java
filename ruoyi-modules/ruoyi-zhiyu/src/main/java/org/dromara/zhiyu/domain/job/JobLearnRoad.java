@@ -34,7 +34,7 @@ public class JobLearnRoad extends BaseZhiyuEntity {
     /** 路径描述 */
     private String description;
 
-    /** 关联岗位 ID 数组（uuid[]） */
+    /** 关联岗位 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> positionIds;
 

@@ -34,11 +34,11 @@ public class PortalScenario extends BaseZhiyuEntity {
     /** 关联岗位 ID */
     private String careerPositionId;
 
-    /** 关联行业 ID 数组（varchar[]） */
+    /** 关联行业 ID 数组（JSON 数组列，原 PG varchar[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> industryIds;
 
-    /** 关联专业 ID 数组（uuid[]） */
+    /** 关联专业 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> professionIds;
 

@@ -15,7 +15,7 @@ import java.util.List;
  * 企业共建岗位 Mapper（career_positions 及其子表，Go→Java 迁移）。
  *
  * <p>基础读取走 MyBatis-Plus 内置 selectById/selectList（数组列经 JsonStringArrayTypeHandler 映射）；
- * 可见性过滤/写入走自定义 SQL（数组/jsonb 需显式 CAST）。</p>
+ * 可见性过滤/写入走自定义 SQL（数组/JSON 列需显式 CAST）。</p>
  *
  * @author zhiyu
  */

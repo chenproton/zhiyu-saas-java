@@ -15,9 +15,9 @@ import java.util.List;
 import org.dromara.zhiyu.core.util.ZhiyuJsonUtils;
 
 /**
- * PostgreSQL jsonb 数组列（如 schedule_entries.periods）↔ {@link List}&lt;String&gt; 类型处理器。
+ * MySQL JSON 数组列（原 PG jsonb，如 schedule_entries.periods）↔ {@link List}&lt;String&gt; 类型处理器。
  *
- * <p>PG jsonb 列经 JDBC getString 返回 JSON 文本，本处理器按 Go 版
+ * <p>JSON 列经 JDBC getString 返回 JSON 文本，本处理器按 Go 版
  * {@code JSONSliceToStrings} 语义解析：仅提取数组中的字符串元素、过滤其余类型与空串，
  * 避免脏数据导致整行读取失败（Go 版同样静默过滤）。</p>
  *

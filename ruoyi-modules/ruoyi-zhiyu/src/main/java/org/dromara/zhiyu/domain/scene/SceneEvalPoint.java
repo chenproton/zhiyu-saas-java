@@ -40,7 +40,7 @@ public class SceneEvalPoint extends BaseZhiyuEntity {
     /** 子类型 */
     private String subType;
 
-    /** 类型（varchar[]） */
+    /** 类型（JSON 数组列，原 PG varchar[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> types;
 
@@ -53,11 +53,11 @@ public class SceneEvalPoint extends BaseZhiyuEntity {
     /** 等级映射（jsonb 原文，数组） */
     private String gradeMapping;
 
-    /** 知识点 ID 数组（uuid[]） */
+    /** 知识点 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> knowledgePointIds;
 
-    /** 能力点 ID 数组（uuid[]） */
+    /** 能力点 ID 数组（JSON 数组列，原 PG uuid[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> abilityPointIds;
 

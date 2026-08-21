@@ -10,7 +10,7 @@ import org.dromara.zhiyu.domain.job.JobWorkflow;
 /**
  * 审批流程 Mapper（workflows 表，Go→Java 迁移）。
  *
- * <p>steps/major_ids 为 jsonb 列，实体以原始 JSON 文本读写（getString/setString 语义）。</p>
+ * <p>steps/major_ids 为 JSON 列，实体以原始 JSON 文本读写（getString/setString 语义）。</p>
  *
  * @author zhiyu
  */
@@ -26,7 +26,7 @@ public interface JobWorkflowMapper extends BaseMapperPlus<JobWorkflow, JobWorkfl
     JobWorkflow selectWorkflowById(@Param("id") String id, @Param("tenantId") String tenantId);
 
     /**
-     * 更新流程（限定租户；steps/major_ids 显式 CAST 为 jsonb）。
+     * 更新流程（限定租户；steps/major_ids 显式 CAST 为 JSON）。
      */
     @Update("""
         UPDATE workflows SET

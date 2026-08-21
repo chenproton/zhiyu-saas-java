@@ -15,8 +15,8 @@ import java.util.List;
 /**
  * 任务测评方式 Mapper（task_evaluation_methods 及子表，Go→Java 迁移）。
  *
- * <p>读取走 MyBatis-Plus 内置方法（jsonb 以 String 承载、数组列经
- * {@link JsonStringArrayTypeHandler} 映射）；写入走自定义 SQL（jsonb/uuid[] 需显式 CAST）。</p>
+ * <p>读取走 MyBatis-Plus 内置方法（JSON 列以 String 承载、数组列经
+ * {@link JsonStringArrayTypeHandler} 映射）；写入走自定义 SQL（JSON 列显式 CAST、数组列经 TypeHandler 绑定）。</p>
  *
  * @author zhiyu
  */

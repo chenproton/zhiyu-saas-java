@@ -30,7 +30,7 @@ class JobAbilityAggregateJobTest {
 
     private IEvaluationJobAbilityService jobAbilityService;
     private JobRunLogMapper jobRunLogMapper;
-    private PgAdvisoryLockGuard advisoryLockGuard;
+    private MySqlLockGuard advisoryLockGuard;
     private JobAlertWebhookSender alertSender;
     private JobAbilityAggregateJob job;
 
@@ -38,13 +38,14 @@ class JobAbilityAggregateJobTest {
     void setUp() throws Exception {
         jobAbilityService = mock(IEvaluationJobAbilityService.class);
         jobRunLogMapper = mock(JobRunLogMapper.class);
-        advisoryLockGuard = mock(PgAdvisoryLockGuard.class);
+        advisoryLockGuard = mock(MySqlLockGuard.class);
         alertSender = mock(JobAlertWebhookSender.class);
         job = new JobAbilityAggregateJob(jobAbilityService, jobRunLogMapper, advisoryLockGuard, alertSender);
-        when(jobRunLogMapper.insertRunning(JobAbilityAggregateJob.JOB_NAME)).thenReturn("log-1");
+        // MySQL 版：日志 ID 由 job 侧 UUID 生成，insertRunning(id, jobName) 不再 RETURNING
+        when(jobRunLogMapper.insertRunning(anyString(), eq(JobAbilityAggregateJob.JOB_NAME))).thenReturn(1);
         // 默认取锁成功
         when(advisoryLockGuard.tryAcquire(JobAbilityAggregateJob.ADVISORY_LOCK_KEY))
-            .thenReturn(mock(PgAdvisoryLockGuard.LockHandle.class));
+            .thenReturn(mock(MySqlLockGuard.LockHandle.class));
     }
 
     @Test
@@ -56,8 +57,8 @@ class JobAbilityAggregateJobTest {
 
         verify(jobAbilityService, never()).aggregateAllPublished();
         // 执行记录仍落库：running → success（Go 语义：拿不到锁返回 nil 视为成功）
-        verify(jobRunLogMapper).insertRunning(JobAbilityAggregateJob.JOB_NAME);
-        verify(jobRunLogMapper).finish("log-1", "success", "");
+        verify(jobRunLogMapper).insertRunning(anyString(), eq(JobAbilityAggregateJob.JOB_NAME));
+        verify(jobRunLogMapper).finish(anyString(), eq("success"), eq(""));
         verify(alertSender, never()).send(anyString(), any(), any());
     }
 
@@ -97,14 +98,14 @@ class JobAbilityAggregateJobTest {
         job.runJob();
 
         verify(jobAbilityService, times(2)).aggregateAllPublished();
-        verify(jobRunLogMapper).finish(eq("log-1"), eq("failed"), anyString());
+        verify(jobRunLogMapper).finish(anyString(), eq("failed"), anyString());
         verify(alertSender, times(1)).send(eq(JobAbilityAggregateJob.JOB_NAME), any(), any());
     }
 
     @Test
     @DisplayName("开始记录写失败：跳过回填与告警（对齐 Go finishJobRun 空 logID 提前返回）")
     void startLogFailureSkipsFinishAndAlert() throws Exception {
-        when(jobRunLogMapper.insertRunning(JobAbilityAggregateJob.JOB_NAME))
+        when(jobRunLogMapper.insertRunning(anyString(), eq(JobAbilityAggregateJob.JOB_NAME)))
             .thenThrow(new RuntimeException("log table missing"));
 
         job.runJob();

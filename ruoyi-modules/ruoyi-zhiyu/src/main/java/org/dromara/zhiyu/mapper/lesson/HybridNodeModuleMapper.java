@@ -31,7 +31,7 @@ public interface HybridNodeModuleMapper extends BaseMapperPlus<HybridNodeModule,
     @Delete("DELETE FROM hybrid_node_modules WHERE node_id = #{nodeId} AND tenant_id = #{tenantId}")
     int deleteByNode(@Param("nodeId") String nodeId, @Param("tenantId") String tenantId);
 
-    /** 插入模块（data 为 jsonb）。 */
+    /** 插入模块（data 为 JSON 列）。 */
     @Insert("INSERT INTO hybrid_node_modules (id, tenant_id, node_id, module_key, mode, data)"
         + " VALUES ((UUID()), #{tenantId}, #{nodeId}, #{moduleKey}, #{mode}, CAST(#{data} AS JSON))")
     int insertModule(@Param("tenantId") String tenantId, @Param("nodeId") String nodeId,

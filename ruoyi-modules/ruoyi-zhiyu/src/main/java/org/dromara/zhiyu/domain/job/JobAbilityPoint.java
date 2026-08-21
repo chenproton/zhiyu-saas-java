@@ -40,7 +40,7 @@ public class JobAbilityPoint {
     /** 能力编码（NL-XXXX） */
     private String code;
 
-    /** 属性标签（text[]） */
+    /** 属性标签（JSON 数组列，原 PG text[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> attributes;
 

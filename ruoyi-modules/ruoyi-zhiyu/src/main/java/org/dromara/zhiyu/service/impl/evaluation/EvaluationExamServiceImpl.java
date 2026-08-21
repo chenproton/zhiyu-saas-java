@@ -1739,6 +1739,13 @@ public class EvaluationExamServiceImpl implements IEvaluationExamService {
     }
 
     private boolean boolOrFalse(Object o) {
+        // MySQL JDBC 将布尔别名列返回为 Long 0/1（PG 时代为真 Boolean），需兼容 Number
+        if (o instanceof Number n) {
+            return n.longValue() != 0;
+        }
+        if (o instanceof Boolean b) {
+            return b;
+        }
         return o != null && Boolean.parseBoolean(String.valueOf(o));
     }
 }

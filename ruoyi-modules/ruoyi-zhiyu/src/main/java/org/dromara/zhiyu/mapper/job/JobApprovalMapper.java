@@ -9,7 +9,7 @@ import org.dromara.zhiyu.domain.job.JobApprovalRecord;
 /**
  * 审批记录 Mapper（approval_records 表，Go→Java 迁移）。
  *
- * <p>history 为 jsonb 列，实体以原始 JSON 文本读写。
+ * <p>history 为 JSON 列，实体以原始 JSON 文本读写。
  * 评审走「行锁读取 → 决策 → CAS 推进」语义（对齐 Go ReviewStep 事务），
  * 实体状态同步按目标类型白名单映射实体表（{@link #TARGET_TABLE_MAP} 由 Service 侧维护）。</p>
  *

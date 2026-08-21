@@ -13,15 +13,15 @@ import java.util.List;
 /**
  * 企业专家 Mapper（alliance_experts 表，Go→Java 迁移）。
  *
- * <p>读取走 MyBatis-Plus 内置方法（jsonb 列经 JsonStringListTypeHandler 映射）；
- * 写入走自定义 SQL（jsonb 需显式 CAST）。</p>
+ * <p>读取走 MyBatis-Plus 内置方法（JSON 数组列经 JsonStringListTypeHandler 映射）；
+ * 写入走自定义 SQL（JSON 列需显式 CAST）。</p>
  *
  * @author zhiyu
  */
 public interface PartnerExpertMapper extends BaseMapperPlus<PartnerExpert, PartnerExpert> {
 
     /**
-     * 创建专家（对齐 Go AllianceStore.CreateExpert；jsonb 字段 COALESCE 兜底 '[]'）。
+     * 创建专家（对齐 Go AllianceStore.CreateExpert；JSON 字段 COALESCE 兜底 '[]'）。
      */
     @Insert("INSERT INTO alliance_experts (id, tenant_id, name, gender, age, title, position, expert_type,"
         + " industry, professional_fields, specialties, experience_years, education, introduction,"

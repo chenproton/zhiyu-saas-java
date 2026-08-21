@@ -80,7 +80,7 @@ public interface SystemRoleMapper extends BaseMapperPlus<SystemRole, SystemRole>
         + " ORDER BY r.created_at")
     List<java.util.Map<String, Object>> selectUserRoleRefs(@Param("userIds") List<String> userIds);
 
-    /** 查询用户完整角色对象（对齐 Go fetchUserRoles：含 permissions jsonb，me 响应用）。 */
+    /** 查询用户完整角色对象（对齐 Go fetchUserRoles：含 permissions JSON 列，me 响应用）。 */
     @Select("SELECT r.id, r.tenant_id, r.code, r.name, r.description,"
         + " r.permissions AS permissions, r.user_count, r.status, r.created_at"
         + " FROM user_roles ur JOIN roles r ON r.id = ur.role_id"

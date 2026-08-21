@@ -105,7 +105,7 @@ public interface LibraryResourceMapper extends BaseMapperPlus<LibraryResource, L
                                         @Param("names") List<String> names);
 
     /**
-     * 新建资源（metadata 为 jsonb；null 时由 Service 传 "{}" 对齐 Go JSONMap 默认）。
+     * 新建资源（metadata 为 JSON 列；null 时由 Service 传 "{}" 对齐 Go JSONMap 默认）。
      */
     @Insert("INSERT INTO resource_library (id, tenant_id, name, resource_type, url, description, thumbnail, file_size, metadata, uploaded_by)"
         + " VALUES (#{id}, #{tenantId}, #{name}, #{resourceType},"

@@ -15,8 +15,8 @@ import java.util.List;
 /**
  * 场景任务 Mapper（scenario_tasks 表，Go→Java 迁移）。
  *
- * <p>读取走 MyBatis-Plus 内置方法；写入走自定义 SQL（eval_data jsonb 需显式 CAST，
- * uuid[] 数组列同理）。eval_data 以 String 承载 JSON 原文。</p>
+ * <p>读取走 MyBatis-Plus 内置方法；写入走自定义 SQL（eval_data 为 MySQL JSON 列需显式 CAST，
+ * 数组列（原 PG uuid[]）经 JsonStringArrayTypeHandler 绑定）。eval_data 以 String 承载 JSON 原文。</p>
  *
  * @author zhiyu
  */

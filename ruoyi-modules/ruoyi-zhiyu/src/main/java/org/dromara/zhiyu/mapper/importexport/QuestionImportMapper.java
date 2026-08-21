@@ -15,7 +15,7 @@ import java.util.Map;
  *
  * <p>仅承载导入用 SQL；业务编排在 ImportExportServiceImpl.importQuestions。
  * 全部 SQL 显式携带 {@code tenant_id} 过滤（租户安全红线）；options/answer 以 JSON 原文
- * 承载（options 为 jsonb 列，写入显式 CAST）。</p>
+ * 承载（options 为 JSON 列，写入显式 CAST）。</p>
  *
  * @author zhiyu
  */

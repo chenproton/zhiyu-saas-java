@@ -11,7 +11,7 @@ import org.dromara.zhiyu.domain.alliance.AllianceResourceGrant;
 import java.util.List;
 
 /**
- * 学校-企业资源授权 Mapper（alliance_resource_grants 表；resource_ids uuid[]）。
+ * 学校-企业资源授权 Mapper（alliance_resource_grants 表；resource_ids 为 MySQL JSON 数组列，原 PG uuid[]）。
  *
  * @author zhiyu
  */

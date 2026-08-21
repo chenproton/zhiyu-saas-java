@@ -32,7 +32,7 @@ public class SceneRubricTemplate extends BaseZhiyuEntity {
     /** 模式（rubric/score_rule） */
     private String mode;
 
-    /** 适用类型（varchar[]） */
+    /** 适用类型（JSON 数组列，原 PG varchar[]） */
     @TableField(typeHandler = JsonStringArrayTypeHandler.class)
     private List<String> types;
 
