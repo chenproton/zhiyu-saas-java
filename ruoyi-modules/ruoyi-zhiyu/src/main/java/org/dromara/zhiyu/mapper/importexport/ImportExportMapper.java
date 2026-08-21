@@ -113,9 +113,9 @@ public interface ImportExportMapper {
                            @Param("sortOrder") Integer sortOrder);
 
     @Update("UPDATE organizations SET parent_id = #{parentId}, sort_order = #{sortOrder}, updated_at = NOW()"
-        + " WHERE id = #{id}")
-    int updateOrganizationParent(@Param("id") String id, @Param("parentId") String parentId,
-                                 @Param("sortOrder") Integer sortOrder);
+        + " WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int updateOrganizationParent(@Param("id") String id, @Param("tenantId") String tenantId,
+                                 @Param("parentId") String parentId, @Param("sortOrder") Integer sortOrder);
 
     // ==================== 用户 users（学生/教师） ====================
 
@@ -196,8 +196,8 @@ public interface ImportExportMapper {
                            @Param("description") String description, @Param("creatorId") String creatorId,
                            @Param("code") String code);
 
-    @Update("UPDATE question_banks SET name = #{name}, updated_at = NOW() WHERE id = #{id}")
-    int updateQuestionBankName(@Param("id") String id, @Param("name") String name);
+    @Update("UPDATE question_banks SET name = #{name}, updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int updateQuestionBankName(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name);
 
     @Select("SELECT id FROM exams WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectExamIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
@@ -208,8 +208,8 @@ public interface ImportExportMapper {
                    @Param("description") String description, @Param("creatorId") String creatorId,
                    @Param("code") String code);
 
-    @Update("UPDATE exams SET name = #{name}, updated_at = NOW() WHERE id = #{id}")
-    int updateExamName(@Param("id") String id, @Param("name") String name);
+    @Update("UPDATE exams SET name = #{name}, updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int updateExamName(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name);
 
     @Select("SELECT id FROM courses WHERE tenant_id = #{tenantId} AND code = #{code} LIMIT 1")
     String selectCourseIdByCode(@Param("tenantId") String tenantId, @Param("code") String code);
@@ -219,8 +219,8 @@ public interface ImportExportMapper {
     int insertCourse(@Param("id") String id, @Param("tenantId") String tenantId, @Param("code") String code,
                      @Param("name") String name, @Param("creatorId") String creatorId);
 
-    @Update("UPDATE courses SET name = #{name}, code = #{code}, updated_at = NOW() WHERE id = #{id}")
-    int updateCourseName(@Param("id") String id, @Param("name") String name, @Param("code") String code);
+    @Update("UPDATE courses SET name = #{name}, code = #{code}, updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int updateCourseName(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name, @Param("code") String code);
 
     @Select("SELECT id FROM career_positions WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectCareerPositionIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
@@ -230,8 +230,8 @@ public interface ImportExportMapper {
     int insertCareerPosition(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                              @Param("shortName") String shortName, @Param("createdBy") String createdBy);
 
-    @Update("UPDATE career_positions SET name = #{name}, updated_at = NOW() WHERE id = #{id}")
-    int updateCareerPositionName(@Param("id") String id, @Param("name") String name);
+    @Update("UPDATE career_positions SET name = #{name}, updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int updateCareerPositionName(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name);
 
     @Select("SELECT id FROM scenarios WHERE tenant_id = #{tenantId} AND name = #{name} LIMIT 1")
     String selectScenarioIdByName(@Param("tenantId") String tenantId, @Param("name") String name);
@@ -246,8 +246,8 @@ public interface ImportExportMapper {
     int insertScenario(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name,
                        @Param("code") String code, @Param("createdBy") String createdBy);
 
-    @Update("UPDATE scenarios SET name = #{name}, code = #{code}, updated_at = NOW() WHERE id = #{id}")
-    int updateScenarioName(@Param("id") String id, @Param("name") String name, @Param("code") String code);
+    @Update("UPDATE scenarios SET name = #{name}, code = #{code}, updated_at = NOW() WHERE id = #{id} AND tenant_id = #{tenantId}")
+    int updateScenarioName(@Param("id") String id, @Param("tenantId") String tenantId, @Param("name") String name, @Param("code") String code);
 
     // ==================== 导出数据查询（列表填充） ====================
 

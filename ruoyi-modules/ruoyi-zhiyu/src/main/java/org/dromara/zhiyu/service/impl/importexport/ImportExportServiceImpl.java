@@ -838,12 +838,23 @@ public class ImportExportServiceImpl implements IImportExportService {
                                            String programId) {
         String tenantId = systemGuard.requireTenant();
         String userId = systemGuard.requireUser();
+        // 导入文件类型/大小显式校验（防绕过上传白名单：仅 xlsx，≤10MB）
+        String original = file == null ? "" : String.valueOf(file.getOriginalFilename()).toLowerCase();
+        if (file == null || file.isEmpty() || file.getSize() > 10L * 1024 * 1024) {
+            throw new ApiException(400, "bad_request", "导入文件无效或超过 10MB 限制");
+        }
+        if (!original.endsWith(".xlsx")) {
+            throw new ApiException(400, "bad_request", "仅支持 xlsx 文件（解析走 XSSFWorkbook）");
+        }
         if (!EXCEL_IMPORT_ENTITIES.contains(entity)) {
             throw new ApiException(400, "bad_request", "不支持的实体");
         }
         if (preview && !PREVIEW_ENTITIES.contains(entity)) {
             throw new ApiException(404, "not_found", "不支持的实体");
         }
+        // 压缩炸弹防护：xlsx 为 ZIP 容器，限制解压比/条目数，防止 OOM（对齐 Fesod/EasyExcel 默认安全参数）
+        org.apache.poi.openxml4j.util.ZipSecureFile.setMinInflateRatio(0.0001);
+        org.apache.poi.openxml4j.util.ZipSecureFile.setMaxEntrySize(64L * 1024 * 1024);
         try (InputStream in = file.getInputStream(); Workbook wb = new XSSFWorkbook(in)) {
             return switch (entity) {
                 case "industries" -> importIndustries(wb, tenantId, preview, overwrite, rename);
@@ -948,7 +959,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 duplicates.add(new ImportPreviewItem(rowNum, key, name));
                 if (!preview) {
                     if (overwrite) {
-                        updateGeneric(entity, existing, name, code);
+                        updateGeneric(entity, tenantId, existing, name, code);
                         created++;
                     } else if (rename) {
                         insertGeneric(entity, tenantId, userId, name + suffix(), code);
@@ -1095,7 +1106,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 duplicates.add(new ImportPreviewItem(rowNum, name, name));
                 if (!preview) {
                     if (overwrite) {
-                        mapper.updateOrganizationParent(existing, parentId, sortOrder);
+                        mapper.updateOrganizationParent(existing, tenantId, parentId, sortOrder);
                         created++;
                     } else if (rename) {
                         String newName = name + suffix();
@@ -2029,7 +2040,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 duplicates.add(new ImportPreviewItem(rowNum, name, name));
                 if (!preview) {
                     if (overwrite) {
-                        mapper.updateQuestionBankName(existing, name);
+                        mapper.updateQuestionBankName(existing, tenantId, name);
                         created++;
                     } else if (rename) {
                         mapper.insertQuestionBank(UUID.randomUUID().toString(), tenantId, name + suffix(), cell(row, 1), userId,
@@ -2071,7 +2082,7 @@ public class ImportExportServiceImpl implements IImportExportService {
                 duplicates.add(new ImportPreviewItem(rowNum, name, name));
                 if (!preview) {
                     if (overwrite) {
-                        mapper.updateExamName(existing, name);
+                        mapper.updateExamName(existing, tenantId, name);
                         created++;
                     } else if (rename) {
                         mapper.insertExam(UUID.randomUUID().toString(), tenantId, name + suffix(), cell(row, 1), userId,
@@ -4091,13 +4102,13 @@ public class ImportExportServiceImpl implements IImportExportService {
         }
     }
 
-    private void updateGeneric(String entity, String existingId, String name, String code) {
+    private void updateGeneric(String entity, String tenantId, String existingId, String name, String code) {
         switch (entity) {
-            case "question_banks" -> mapper.updateQuestionBankName(existingId, name);
-            case "exams" -> mapper.updateExamName(existingId, name);
-            case "courses" -> mapper.updateCourseName(existingId, name, code);
-            case "career_positions" -> mapper.updateCareerPositionName(existingId, name);
-            case "scenarios" -> mapper.updateScenarioName(existingId, name, code);
+            case "question_banks" -> mapper.updateQuestionBankName(existingId, tenantId, name);
+            case "exams" -> mapper.updateExamName(existingId, tenantId, name);
+            case "courses" -> mapper.updateCourseName(existingId, tenantId, name, code);
+            case "career_positions" -> mapper.updateCareerPositionName(existingId, tenantId, name);
+            case "scenarios" -> mapper.updateScenarioName(existingId, tenantId, name, code);
             default -> throw new ApiException(400, "bad_request", "不支持的实体");
         }
     }
@@ -4167,6 +4178,10 @@ public class ImportExportServiceImpl implements IImportExportService {
     private static String csvCell(String v) {
         if (v == null) {
             return "";
+        }
+        // 公式注入防护：以 = + - @ 开头的值前置单引号，避免导出后在 Excel 中被当作公式执行
+        if (!v.isEmpty() && (v.charAt(0) == '=' || v.charAt(0) == '+' || v.charAt(0) == '-' || v.charAt(0) == '@')) {
+            v = "'" + v;
         }
         if (v.contains(",") || v.contains("\"") || v.contains("\n")) {
             return "\"" + v.replace("\"", "\"\"") + "\"";
