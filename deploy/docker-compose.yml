@@ -102,6 +102,9 @@ services:
     tmpfs:
       - "/tmp:noexec,nosuid,size=100m"
       - "/app/logs:noexec,nosuid,size=10m"
+      # spring.servlet.multipart.location=/basic/server/temp（application-prod.yml）：read_only 容器必须 tmpfs 可写，
+      # 否则 Jetty 解析 multipart（Excel 导入/文件上传）报 400 bad multipart —— /basic 只读（部署实测）
+      - "/basic/server/temp:noexec,nosuid,size=100m"
     networks:
       - zhiyu
 
